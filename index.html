@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RDT DPR ENTRY FORM</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    /* BASE STYLES */
+    :root { --epi-black: #000; --epi-yellow: #FFCE00; --bg: #0c0c0c; --card: #181818; --text: #fff; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding-bottom: 40px; }
+
+    header { background-color: #1a1a1a; padding: 20px 0; text-align: center; border-bottom: 3px solid var(--epi-yellow); position: relative; margin-bottom: 25px; }
+    .header-title { color: #ffffff; font-size: 1.6rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+    
+    .control-bar { background: #111; padding: 12px 20px; display: grid; gap: 10px; border-bottom: 1px solid #222; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+    .op-bar { background: #1a1a1a; padding: 10px 20px; display: none; gap: 10px; border-bottom: 2px solid var(--epi-yellow); grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); opacity: 0; transition: opacity 0.4s; }
+    
+    .item { display: flex; flex-direction: column; gap: 3px; }
+    .item label { font-size: 0.6rem; font-weight: 800; color: var(--epi-yellow); text-transform: uppercase; }
+    .item select, .item input { background: #262626; border: 1px solid #333; color: #fff; padding: 6px; border-radius: 3px; outline: none; font-size: 0.8rem; }
+    .item select:focus, .item input:focus { border-color: var(--epi-yellow); }
+    .item input[readonly] { background: #111; border-color: #222; color: var(--epi-yellow); font-weight: bold; }
+
+    .sync-btn { background: var(--epi-yellow); color: #000; border: none; padding: 8px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; margin-top: 14px; }
+    .pop-btn { background: #333; color: var(--epi-yellow); border: 1px solid var(--epi-yellow); padding: 8px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 0.65rem; margin-top: 14px; }
+
+    main { padding: 25px 20px; max-width: 1200px; margin: 0 auto; display: none; opacity: 0; }
+    .matrix-wrapper { background: var(--card); border: 1px solid #333; border-radius: 6px; padding: 20px; border-top: 4px solid var(--epi-yellow); margin-bottom: 30px; }
+    .matrix-container { display: flex !important; flex-wrap: nowrap !important; gap: 15px; align-items: flex-start; width: 100%; overflow-x: auto; padding-bottom: 15px; }
+    
+    .col-labels { flex: 0 0 80px !important; display: flex; flex-direction: column; gap: 12px; }
+    .column { flex: 1 1 0 !important; display: flex !important; flex-direction: column !important; gap: 12px; min-width: 130px !important; max-width: 200px !important; }
+    .hidden-column { display: none !important; }
+
+    .cell { display: flex; align-items: center; justify-content: center; height: 35px; }
+    .cell.header { height: auto; padding-bottom: 10px; font-size: 0.7rem; font-weight: 900; color: var(--epi-yellow); text-transform: uppercase; border-bottom: 1px solid #444; text-align: center; }
+    .cell.label { font-size: 0.7rem; font-weight: bold; color: #ddd; text-transform: uppercase; justify-content: flex-end; padding-right: 15px; border-right: 1px solid #444; }
+    .cell input { background: #000; border: 1px solid #333; color: #fff; height: 100%; width: 100%; font-size: 0.95rem; border-radius: 3px; outline: none; text-align: center; }
+    .cell input:focus { border-color: var(--epi-yellow); }
+    .total-box { font-weight: 900; color: #000 !important; background: var(--epi-yellow) !important; border: none !important; cursor: not-allowed; }
+    
+    .mob-only { display: none; }
+    .primary-btn { padding: 15px 30px; font-size: 0.95rem; font-weight: 900; border-radius: 6px; cursor: pointer; text-transform: uppercase; width: 100%; max-width: 400px; margin: 30px auto; display: block; background: var(--epi-yellow); color: #000; border: none; }
+    
+    #loader { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: var(--epi-yellow); font-weight: bold; font-size: 1.2rem; }
+
+    @media (max-width: 900px) {
+        .pc-only { display: none; } 
+        .matrix-container { flex-direction: column !important; }
+        .column { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; max-width: 100% !important; background: #111; padding: 15px; border: 1px solid #222; border-radius: 5px; width: 100%; }
+        .cell.header { grid-column: 1 / -1; justify-content: flex-start; text-align: left; border-bottom: none; font-size: 0.8rem; }
+        .cell { height: auto; flex-direction: column; align-items: stretch; justify-content: flex-start; }
+        .mob-only { display: block; font-size: 0.55rem; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+        .cell input { height: 35px; }
+    }
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+</style>
+</head>
+<body onload="initApp()">
+
+<div id="loader"><i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 15px;"></i> Loading Initial Data...</div>
+
+<header><div class="header-title">RDT DPR ENTRY FORM</div></header>
+
+<div class="control-bar">
+    <div class="item"><label>Customer</label><select id="cust" onchange="updateSites()"><option value="">Loading...</option></select></div>
+    <div class="item"><label>Work Site</label><select id="site"><option value="">Select</option></select></div>
+    <div class="item"><label>Date</label><input type="date" id="date"></div>
+    <div class="item"><label>Login ID</label><input type="text" id="user" placeholder="Admin"></div>
+    <div class="item"><label>Password</label><input type="password" id="pass" placeholder="••••"></div>
+    <div class="item"><button class="sync-btn" onclick="handleSync()"><i class="fas fa-sync" id="icon"></i> Sync</button></div>
+</div>
+
+<div class="op-bar" id="op-bar">
+    <div class="item"><label>Fleet ID</label><select id="fleet"><option value="">Select Asset</option></select></div>
+    <div class="item"><button class="pop-btn" onclick="populateConfig()">Populate</button></div>
+    <div class="item"><label>Shift</label><select id="shift"><option>--</option></select></div>
+    <div class="item"><label>Shift Hour</label><input type="number" id="shift-hours" readonly placeholder="Auto"></div>
+    <div class="item"><label>Formation</label><select id="rock"><option>--</option></select></div>
+    <div class="item">
+        <label>Location (Select)</label>
+        <select id="loc-select" onchange="document.getElementById('loc-manual').value = this.value;"><option value="">-- Select Pit --</option></select>
+    </div>    
+    <div class="item">
+        <label>Location (Manual)</label>
+        <input type="text" id="loc-manual" placeholder="Or type new pit name">
+    </div>    
+</div>
+
+<main id="main-area">
+    <div class="matrix-wrapper">
+        <h3 style="color: var(--epi-yellow); margin-bottom: 15px; font-size: 0.9rem; text-transform: uppercase;">Production Data</h3>
+        <div class="matrix-container">
+            <div class="col-labels pc-only">
+                <div class="cell header"></div>
+                <div class="cell label">Start</div><div class="cell label">Close</div><div class="cell label">Total</div>
+            </div>
+
+            <div class="column">
+                <div class="cell header">Impact Hr 1</div>
+                <div class="cell"><label class="mob-only">Start</label><input type="number" id="imp1-start" placeholder="0.0"></div>
+                <div class="cell"><label class="mob-only">Close</label><input type="number" id="imp1-close" oninput="calcMeter('imp1')"></div>
+                <div class="cell"><label class="mob-only">Total</label><input type="number" id="imp1-total" readonly class="total-box"></div>
+            </div>
+            <div id="col-imp2" class="column">
+                <div class="cell header">Impact Hr 2</div>
+                <div class="cell"><label class="mob-only">Start</label><input type="number" id="imp2-start" placeholder="0.0"></div>
+                <div class="cell"><label class="mob-only">Close</label><input type="number" id="imp2-close" oninput="calcMeter('imp2')"></div>
+                <div class="cell"><label class="mob-only">Total</label><input type="number" id="imp2-total" readonly class="total-box"></div>
+            </div>
+            <div id="col-imp3" class="column">
+                <div class="cell header">Impact Hr 3</div>
+                <div class="cell"><label class="mob-only">Start</label><input type="number" id="imp3-start" placeholder="0.0"></div>
+                <div class="cell"><label class="mob-only">Close</label><input type="number" id="imp3-close" oninput="calcMeter('imp3')"></div>
+                <div class="cell"><label class="mob-only">Total</label><input type="number" id="imp3-total" readonly class="total-box"></div>
+            </div>
+
+            <div class="column">
+                <div class="cell header">Drilled Mtr 1</div>
+                <div class="cell"><input type="number" id="dr1-total" readonly class="total-box"></div>
+            </div>
+            <div id="col-dr2" class="column">
+                <div class="cell header">Drilled Mtr 2</div>
+                <div class="cell"><input type="number" id="dr2-total" readonly class="total-box"></div>
+            </div>
+            <div id="col-dr3" class="column">
+                <div class="cell header">Drilled Mtr 3</div>
+                <div class="cell"><input type="number" id="dr3-total" readonly class="total-box"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="matrix-wrapper">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 style="color: var(--epi-yellow); font-size: 0.9rem; text-transform: uppercase;">Detailed Drilling Data</h3>
+            <button type="button" onclick="addHoleRow()" style="background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.7rem;">+ Add Type</button>
+        </div>
+        <div id="hole-container"></div>
+        <div class="item" style="margin-top: 10px; max-width: 200px;">
+            <label>Total Holes</label>
+            <input type="number" id="holes-total" readonly class="total-box" style="width: 100%;">
+        </div>
+    </div>
+
+    <button type="button" id="submit-btn" class="primary-btn" onclick="submitData()">SUBMIT DAILY DATA</button>
+
+    <button type="button" class="primary-btn" onclick="document.getElementById('csv-modal').style.display='flex'" style="background: #222; color: var(--epi-yellow); border: 1px solid var(--epi-yellow); margin-top: 10px;">BULK CSV UPLOAD</button>
+
+    <div id="csv-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:999; flex-direction:column; justify-content:center; align-items:center; padding:20px;">
+        <h2 style="color:var(--epi-yellow); margin-bottom:10px;">Bulk CSV Upload</h2>
+        <div style="background: #1a1a1a; padding: 20px; border-radius: 6px; border: 1px solid #333; max-width: 500px; text-align: center;">
+            <p style="color:#aaa; font-size:0.85rem; margin-bottom:20px; line-height: 1.5;">
+                1. Download the exact template.<br>
+                2. Fill your monthly data using Excel (Do NOT change headers).<br>
+                3. Save the file as <b>CSV (Comma delimited)</b>.<br>
+                4. Ensure Customer, Site, and Fleet are selected on the main page.<br>
+                5. Upload the saved CSV file below.
+            </p>
+            
+            <button type="button" onclick="downloadCSVTemplate()" style="margin-bottom: 25px; padding:10px 20px; background:#111; color:var(--epi-yellow); font-weight:bold; border:1px solid #555; border-radius:4px; cursor:pointer; width: 100%;">⬇️ Download CSV Template</button>
+            
+            <input type="file" id="csv-file" accept=".csv" style="margin-bottom: 20px; color: #fff; width: 100%; padding: 10px; background: #000; border: 1px dashed #555;">
+            
+            <div style="display:flex; gap:15px; margin-top:10px;">
+                <button type="button" onclick="document.getElementById('csv-modal').style.display='none'" style="flex: 1; padding:12px; cursor:pointer; background:#333; color:#fff; border:none; border-radius:4px;">Cancel</button>
+                <button type="button" id="process-csv-btn" onclick="processCSVUpload()" style="flex: 1; padding:12px; cursor:pointer; background:var(--epi-yellow); color:#000; font-weight:bold; border:none; border-radius:4px;">Upload & Submit</button>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script>
+// ==========================================
+// 1. GLOBAL VARIABLES & SERVER
+// ==========================================
+let dbHierarchy = {};
+let availableHoleTypes = [];
+let availableHoleDias = []; 
+
+// 🚨 PASTE YOUR ACTUAL GOOGLE APP SCRIPT URL HERE 🚨
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzLPst6bC2JxlF93mI04Lwt8YF18qSw2KRfzNgmT5XsqMEZ9VuC-5FbHJUjouks_HaqaA/exec";
+
+async function callServer(data) {
+    try {
+        const response = await fetch(WEB_APP_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(data) });
+        return await response.json();
+    } catch (error) { return { status: "ERROR", message: "Server connection failed." }; }
+}
+
+// ==========================================
+// 2. UI RESET & DRILLING LOGIC
+// ==========================================
+function resetForm() {
+    ['shift', 'rock', 'loc-select', 'loc-manual', 'shift-hours'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    for(let i=1; i<=3; i++) {
+        ['start', 'close', 'total'].forEach(suf => {
+            const el = document.getElementById(`imp${i}-${suf}`);
+            if(el) el.value = '';
+        });
+        const dr = document.getElementById(`dr${i}-total`);
+        if(dr) dr.value = '0.0';
+    }
+    document.getElementById('hole-container').innerHTML = '';
+    document.getElementById('holes-total').value = '';
+    addHoleRow(); 
+}
+
+function calcDrilling() {
+    for(let i=1; i<=3; i++) {
+        const el = document.getElementById('dr' + i + '-total');
+        if (el) el.value = "0.0";
+    }
+    let totalHoles = 0;
+    document.querySelectorAll('#hole-container > div').forEach(row => {
+        const boom = row.querySelector('.h-boom').value;
+        const qty = parseFloat(row.querySelector('.h-qty').value) || 0;
+        const depth = parseFloat(row.querySelector('.h-depth').value) || 0;
+        totalHoles += qty;
+        const drInput = document.getElementById('dr' + boom + '-total');
+        if (drInput) drInput.value = (parseFloat(drInput.value) + (qty * depth)).toFixed(1);
+    });
+    document.getElementById('holes-total').value = totalHoles;
+}
+
+function addHoleRow() {
+    const container = document.getElementById('hole-container');
+    const rowDiv = document.createElement('div');
+    rowDiv.style = "display: flex; gap: 5px; margin-bottom: 8px;";
+    
+    const types = (availableHoleTypes || []).map(t => `<option value="${t}">${t}</option>`).join('');
+    const dias = (availableHoleDias || []).map(d => `<option value="${d}">${d}</option>`).join('');
+
+    rowDiv.innerHTML = `
+        <select class="h-boom" onchange="calcDrilling()" style="width: 60px; background:#222; color:var(--epi-yellow); border:1px solid #333; font-weight:bold; text-align:center; padding:6px; border-radius:3px;">
+            <option value="1">B1</option><option value="2">B2</option><option value="3">B3</option>
+        </select>
+        <select class="h-type" style="flex:2; background:#000; color:#fff; border:1px solid #333; padding:6px; border-radius:3px;"><option value="">--Type--</option>${types}</select>
+        <select class="h-dia" style="flex:1; background:#000; color:#fff; border:1px solid #333; padding:6px; border-radius:3px;"><option value="">--Dia--</option>${dias}</select>
+        <input type="number" class="h-depth" placeholder="Depth" oninput="calcDrilling()" style="flex:1; background:#000; color:#fff; border:1px solid #333; text-align:center; padding:6px; border-radius:3px;">
+        <input type="number" class="h-qty" placeholder="Qty" oninput="calcDrilling()" style="flex:1; background:#000; color:#fff; border:1px solid #333; text-align:center; padding:6px; border-radius:3px;">
+        <button type="button" onclick="this.parentElement.remove(); calcDrilling();" style="background:#444; color:#fff; border:none; padding:0 12px; font-weight:bold; border-radius:3px; cursor:pointer;">X</button>
+    `;
+    container.appendChild(rowDiv);
+}
+
+function getDrillSpread() {
+    let spread = {
+        face: { dia: [], count: 0, depth: [], metres: 0 },
+        rockbolt: { dia: [], count: 0, depth: [], metres: 0 },
+        prod: { dia: [], count: 0, depth: [], metres: 0 },
+        ream: { dia: [], count: 0, depth: [], metres: 0 },
+        scale: { dia: [], count: 0, depth: [], metres: 0 }
+    };
+
+    document.querySelectorAll('#hole-container > div').forEach(row => {
+        const type = row.querySelector('.h-type').value.toLowerCase();
+        const dia = row.querySelector('.h-dia').value;
+        const depth = parseFloat(row.querySelector('.h-depth').value) || 0;
+        const qty = parseFloat(row.querySelector('.h-qty').value) || 0;
+        const metres = qty * depth;
+
+        if (!type) return;
+
+        let cat = null;
+        if (type.includes("face")) cat = spread.face;
+        else if (type.includes("bolt")) cat = spread.rockbolt;
+        else if (type.includes("prod")) cat = spread.prod;
+        else if (type.includes("ream")) cat = spread.ream;
+        else if (type.includes("scal")) cat = spread.scale;
+
+        if (cat) {
+            if (dia && !cat.dia.includes(dia)) cat.dia.push(dia);
+            if (depth > 0 && !cat.depth.includes(depth)) cat.depth.push(depth);
+            cat.count += qty;
+            cat.metres += metres;
+        }
+    });
+
+    return {
+        face: { dia: spread.face.dia.join(','), count: spread.face.count, depth: spread.face.depth.join(','), metres: spread.face.metres.toFixed(1) },
+        rockbolt: { dia: spread.rockbolt.dia.join(','), count: spread.rockbolt.count, depth: spread.rockbolt.depth.join(','), metres: spread.rockbolt.metres.toFixed(1) },
+        prod: { dia: spread.prod.dia.join(','), count: spread.prod.count, depth: spread.prod.depth.join(','), metres: spread.prod.metres.toFixed(1) },
+        ream: { dia: spread.ream.dia.join(','), count: spread.ream.count, depth: spread.ream.depth.join(','), metres: spread.ream.metres.toFixed(1) },
+        scale: { dia: spread.scale.dia.join(','), metres: spread.scale.metres.toFixed(1) }
+    };
+}
+
+// ==========================================
+// 3. CORE APP LOGIC
+// ==========================================
+async function initApp() {
+    // Sets today's date automatically
+    document.getElementById('date').valueAsDate = new Date();
+    
+    // Fetches the data from Google Sheets
+    const res = await callServer({ action: "getInitialHierarchy" });
+    document.getElementById('loader').style.display = 'none';
+    
+    if (res.status === "SUCCESS") {
+        dbHierarchy = res.data;
+        const custSelect = document.getElementById('cust');
+        
+        // ---> THIS NEW LINE CLEARS "LOADING..." AND REPLACES IT <---
+        custSelect.innerHTML = '<option value="">-- Select Customer --</option>'; 
+        
+        // Populates the real customers
+        Object.keys(dbHierarchy).sort().forEach(c => custSelect.options.add(new Option(c, c)));
+    }
+}
+function updateSites() {
+    const s = document.getElementById('site');
+    s.innerHTML = '<option value="">Select Site</option>';
+    const cust = document.getElementById('cust').value;
+    if(dbHierarchy[cust]) dbHierarchy[cust].sort().forEach(site => s.options.add(new Option(site, site)));
+}
+
+async function handleSync() {
+    const icon = document.getElementById('icon'), u = document.getElementById('user').value, p = document.getElementById('pass').value;
+    const s = document.getElementById('site').value, c = document.getElementById('cust').value;
+    if(!u || !p || !s || !c) return alert("Please fill Customer, Site, and Login credentials.");
+    
+    icon.classList.add('fa-spin');
+    const res = await callServer({ action: "login", site: s, user: u, pass: p });
+    icon.classList.remove('fa-spin');
+
+    if(res.status === "SUCCESS") {
+        const fSelect = document.getElementById('fleet');
+        fSelect.innerHTML = '<option value="">Select Asset</option>';
+        if (res.fleets) res.fleets.forEach(fleet => fSelect.options.add(new Option(fleet, fleet)));
+        const bar = document.getElementById('op-bar');
+        bar.style.display = 'grid'; setTimeout(() => bar.style.opacity = '1', 10);
+    } else { alert("Access Denied: " + res.message); }
+}
+
+async function populateConfig() {
+    const fleetId = document.getElementById('fleet').value;
+    if(!fleetId) return alert("Select Fleet Asset");
+    const btn = document.querySelector('.pop-btn');
+    btn.innerText = "FETCHING...";
+
+    const res = await callServer({ action: "getConfig", fleetId: fleetId });
+    btn.innerText = "POPULATE";
+
+    if (res.status === "SUCCESS") {
+        fillDropdown('shift', res.shift);
+        fillDropdown('rock', res.formation);
+        fillDropdown('loc-select', res.locations); 
+        document.getElementById('shift-hours').value = res.fixedShiftHour || "";
+
+        availableHoleTypes = res.drillTypes ? res.drillTypes.split(',').map(s => s.trim()) : [];
+        availableHoleDias = res.holeDias ? res.holeDias.split(',').map(s => s.trim()) : [];
+
+        document.getElementById('hole-container').innerHTML = "";
+        addHoleRow();
+
+        const cleanBoomStr = String(res.boomType).replace(/\D/g, ''); 
+        const bType = parseInt(cleanBoomStr) || 1; 
+        for (let i = 1; i <= 3; i++) {
+            const impEl = document.getElementById('col-imp' + i);
+            const drEl = document.getElementById('col-dr' + i);
+            if (i > bType) {
+                if (impEl) impEl.classList.add('hidden-column');
+                if (drEl) drEl.classList.add('hidden-column');
+            } else {
+                if (impEl) impEl.classList.remove('hidden-column');
+                if (drEl) drEl.classList.remove('hidden-column');
+            }
+        }
+        document.getElementById('main-area').style.display = 'block';
+        setTimeout(() => document.getElementById('main-area').style.opacity = '1', 50);
+    } else { alert("Config Error: " + res.message); }
+}
+
+function fillDropdown(id, dataString) {
+    const s = document.getElementById(id);
+    s.innerHTML = '<option value="">--</option>';
+    if (dataString) dataString.split(',').forEach(item => { if(item.trim()) s.options.add(new Option(item.trim(), item.trim())); });
+}
+
+function calcMeter(prefix) {
+    const sVal = parseFloat(document.getElementById(prefix + '-start').value) || 0;
+    const cVal = parseFloat(document.getElementById(prefix + '-close').value) || 0;
+    const totalObj = document.getElementById(prefix + '-total');
+    if (!document.getElementById(prefix + '-close').value) return totalObj.value = "";
+    totalObj.value = (cVal - sVal < 0) ? "ERR" : (cVal - sVal).toFixed(2);
+}
+
+function getVals(p) { return { s: document.getElementById(p+'-start')?.value || "", c: document.getElementById(p+'-close')?.value || "", t: document.getElementById(p+'-total')?.value || "" }; }
+
+// ==========================================
+// 4. SUBMISSION LOGIC
+// ==========================================
+async function submitData() {
+    const btn = document.getElementById('submit-btn');
+    btn.innerHTML = 'SUBMITTING...'; btn.disabled = true;
+
+    const payload = {
+        date: document.getElementById('date').value, cust: document.getElementById('cust').value,
+        workSite: document.getElementById('site').value, fleetId: document.getElementById('fleet').value,
+        user: document.getElementById('user').value, shift: document.getElementById('shift').value,
+        shiftHours: document.getElementById('shift-hours').value, rock: document.getElementById('rock').value,
+        loc: document.getElementById('loc-manual').value,
+        imp1: getVals('imp1'), imp2: getVals('imp2'), imp3: getVals('imp3'),
+        dr1: {t: document.getElementById('dr1-total').value},
+        dr2: {t: document.getElementById('dr2-total').value},
+        dr3: {t: document.getElementById('dr3-total').value},
+        totalHoles: document.getElementById('holes-total').value, 
+        spread: getDrillSpread() 
+    };
+
+    const res = await callServer({ action: "submitPerformance", data: payload });
+    btn.innerHTML = 'SUBMIT DAILY DATA'; btn.disabled = false;
+    
+    if (res.status === "SUCCESS") {
+        alert("✅ Success! Data Saved.");
+        resetForm();
+    } else {
+        alert("❌ Error: " + res.message);
+    }
+}
+
+function downloadCSVTemplate() {
+    const headers = [
+        "Date", "Shift", "Formation", "Shift_Hours", "Location", 
+        "Imp1_Start", "Imp1_Close", "Imp1_Total", 
+        "Imp2_Start", "Imp2_Close", "Imp2_Total", 
+        "Imp3_Start", "Imp3_Close", "Imp3_Total", 
+        "Dr1_Total", "Dr2_Total", "Dr3_Total", 
+        "Total_Holes", 
+        "Face_Dia", "Face_Count", "Face_Depth", "Face_Metres", 
+        "RockBolt_Dia", "RockBolt_Count", "RockBolt_Depth", "RockBolt_Metres", 
+        "Prod_Dia", "Prod_Count", "Prod_Depth", "Prod_Metres", 
+        "Ream_Dia", "Ream_Count", "Ream_Depth", "Ream_Metres", 
+        "Scale_Dia", "Scale_Metres"
+    ];
+    
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "RDT_Bulk_Template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Reads the uploaded CSV and sends it to your existing backend bulk processor
+async function processCSVUpload() {
+    const fileInput = document.getElementById('csv-file');
+    if (!fileInput.files.length) return alert("Please select a CSV file first.");
+
+    const cust = document.getElementById('cust').value;
+    const workSite = document.getElementById('site').value;
+    const fleetId = document.getElementById('fleet').value;
+    const user = document.getElementById('user').value;
+
+    if (!cust || !workSite || !fleetId || !user) {
+        return alert("Ensure Customer, Site, Fleet, and User are filled out on the main page before uploading.");
+    }
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = async function(e) {
+        const text = e.target.result;
+        // Split file by new lines
+        const rows = text.split(/\r?\n/).filter(row => row.trim().length > 0);
+        
+        if (rows.length < 2) return alert("The CSV appears to be empty (no data below headers).");
+
+        let parsedRows = [];
+        
+        // Start loop at index 1 to SKIP the header row
+        for (let i = 1; i < rows.length; i++) {
+            // Robust CSV split that ignores commas inside quotes
+            let cols = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
+            
+            if (cols.length >= 36) {
+                parsedRows.push(cols.slice(0, 36));
+            } else {
+                return alert(`Row ${i + 1} is missing columns. Found ${cols.length}, expected 36. Please re-download the template.`);
+            }
+        }
+
+        if (parsedRows.length === 0) return alert("No valid rows found to process.");
+
+        const btn = document.getElementById('process-csv-btn');
+        btn.innerText = "UPLOADING..."; btn.disabled = true;
+
+        const payload = { cust: cust, workSite: workSite, fleetId: fleetId, user: user, rows: parsedRows };
+        
+        // Sends to your Code.gs submitBulk function
+        const res = await callServer({ action: "submitBulk", data: payload });
+        
+        btn.innerText = "Upload & Submit"; btn.disabled = false;
+        
+        if (res.status === "SUCCESS") {
+            alert("✅ Bulk Upload Complete: " + res.message);
+            document.getElementById('csv-file').value = ""; // Clear file
+            document.getElementById('csv-modal').style.display = "none"; // Close modal
+        } else {
+            alert("❌ Bulk Error: " + res.message);
+        }
+    };
+    
+    // Trigger the file read
+    reader.readAsText(file);
+}
+
+</script>
+</body>
+</html>
