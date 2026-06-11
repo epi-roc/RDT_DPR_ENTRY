@@ -37,7 +37,8 @@
 
     .t-fleet { width: 180px; flex-shrink: 0; display: flex; align-items: center; font-weight: bold; color: var(--epi-yellow); font-size: 0.9rem; border-right: 1px solid #333; padding-right: 10px; }
     .t-shift { width: 100px; flex-shrink: 0; }
-    .t-loc { width: 150px; flex-shrink: 0; border-right: 1px dashed #333; padding-right: 10px; }
+    .t-loc { width: 140px; flex-shrink: 0; }
+    .t-status { width: 120px; flex-shrink: 0; border-right: 1px dashed #333; padding-right: 10px; }
 
     .t-row input, .t-row select { background: #000; color: #fff; border: 1px solid #444; padding: 6px; font-size: 0.8rem; border-radius: 3px; width: 100%; outline: none; }
     .t-row input:focus, .t-row select:focus { border-color: var(--epi-yellow); }
@@ -169,15 +170,15 @@ function buildFleetDashboard() {
         <div class="t-fleet">Fleet Asset</div>
         <div class="t-shift">Shift</div>
         <div class="t-loc">Location</div>
+        <div class="t-status">Status</div>
         <div style="padding-left:5px;">Drilling Data <span style="color:#666; text-transform:none;">(Type, Dia, Depth, Qty, Total)</span></div>
     `;
     container.appendChild(headerRow);
 
     activeFleets.forEach(fleet => {
-        const shiftOpts = fleet.shifts.split(',').map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('');
-        
-        // Build Location Datalist Options
+        const shiftOpts = fleet.shifts ? fleet.shifts.split(',').map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('') : '';
         const locOpts = fleet.locations ? fleet.locations.split(',').map(l => `<option value="${l.trim()}">`).join('') : '';
+        const statusOpts = fleet.statuses ? fleet.statuses.split(',').map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('') : '<option value="Operative">Operative</option><option value="Non-Operative">Non-Operative</option>';
 
         const row = document.createElement('div');
         row.className = "t-row";
@@ -189,6 +190,9 @@ function buildFleetDashboard() {
             <div class="t-loc">
                 <input list="locs-${fleet.id}" class="f-loc" placeholder="Select or Type">
                 <datalist id="locs-${fleet.id}">${locOpts}</datalist>
+            </div>
+            <div class="t-status">
+                <select class="f-status"><option value="">- Status -</option>${statusOpts}</select>
             </div>
             
             <div class="t-drills" id="drills-${fleet.id}"></div>
@@ -219,7 +223,7 @@ function addDrillColumn(fleetId) {
         '<option value="splitset">Splitset</option>'
     ].join('');
 
-    const diaOpts = fleet.dias.split(',').map(d => `<option value="${d.trim()}">${d.trim()}</option>`).join('');
+    const diaOpts = fleet.dias ? fleet.dias.split(',').map(d => `<option value="${d.trim()}">${d.trim()}</option>`).join('') : '';
 
     const container = document.getElementById(`drills-${fleetId}`);
     const block = document.createElement('div');
@@ -316,19 +320,21 @@ async function submitData() {
         const fleetId = row.id.replace("fleet-", "");
         const shift = row.querySelector('.f-shift').value;
         const loc = row.querySelector('.f-loc').value;
+        const status = row.querySelector('.f-status').value;
         const totalHoles = parseFloat(row.querySelector('.t-holes').innerText) || 0;
         const totalMetres = parseFloat(row.querySelector('.t-metres').innerText) || 0;
 
-        if (totalHoles > 0) {
+        // Submits if they entered Holes OR if they just selected a Shift and Status (e.g., Non-Operative, 0 drilling)
+        if (totalHoles > 0 || status) {
             payload.entries.push({
-                fleetId, shift, loc,
+                fleetId, shift, loc, status,
                 totalHoles, totalMetres,
                 spread: extractSpread(row)
             });
         }
     });
 
-    if (payload.entries.length === 0) return alert("No drilling data entered. Fill values before submitting.");
+    if (payload.entries.length === 0) return alert("No valid data entered. Fill values before submitting.");
 
     const btn = document.getElementById('submit-btn');
     btn.innerHTML = 'SUBMITTING...'; btn.disabled = true;
