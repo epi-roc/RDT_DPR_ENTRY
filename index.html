@@ -47,7 +47,8 @@
     .t-drills { display: flex; gap: 5px; }
     .t-drill-block { display: flex; gap: 4px; align-items: center; background: #000; padding: 4px; border: 1px solid #333; border-radius: 4px; }
     
-    .t-drill-block select.d-cat { width: 110px; }
+    /* Increased width for d-cat to accommodate long strings like "Face Drilling - 4.3/45mm" */
+    .t-drill-block select.d-cat { width: 180px; }
     .t-drill-block select.d-dia { width: 70px; }
     .t-drill-block input.d-depth { width: 60px; }
     .t-drill-block input.d-qty { width: 55px; }
@@ -171,7 +172,7 @@ function buildFleetDashboard() {
         <div class="t-shift">Shift</div>
         <div class="t-loc">Location</div>
         <div class="t-status">Status</div>
-        <div style="padding-left:5px;">Drilling Data <span style="color:#666; text-transform:none;">(Type, Dia, Depth, Qty, Total)</span></div>
+        <div style="padding-left:5px;">Drilling Data <span style="color:#666; text-transform:none;">(Type, Dia, Qty, Depth, Total)</span></div>
     `;
     container.appendChild(headerRow);
 
@@ -215,13 +216,8 @@ function addDrillColumn(fleetId) {
     const fleet = activeFleets.find(f => f.id === fleetId);
     if (!fleet) return;
 
-    const drillCategories = [
-        '<option value="face">Face</option>',
-        '<option value="rockbolt">Rockbolt</option>',
-        '<option value="prod">Production</option>',
-        '<option value="ream">Reaming</option>',
-        '<option value="splitset">Splitset</option>'
-    ].join('');
+    // Dynamically splits Column I strings into dropdown options
+    const drillCategories = fleet.types ? fleet.types.split(',').map(t => `<option value="${t.trim()}">${t.trim()}</option>`).join('') : '<option value="">- No Types Found -</option>';
 
     const diaOpts = fleet.dias ? fleet.dias.split(',').map(d => `<option value="${d.trim()}">${d.trim()}</option>`).join('') : '';
 
@@ -232,8 +228,8 @@ function addDrillColumn(fleetId) {
     block.innerHTML = `
         <select class="d-cat"><option value="">Type</option>${drillCategories}</select>
         <select class="d-dia"><option value="">Dia</option>${diaOpts}</select>
-        <input type="number" class="d-depth" placeholder="Dpth" oninput="updateFleetTotals('${fleetId}')">
         <input type="number" class="d-qty" placeholder="Qty" oninput="updateFleetTotals('${fleetId}')">
+        <input type="number" class="d-depth" placeholder="Dpth" oninput="updateFleetTotals('${fleetId}')">
         <input type="number" class="d-metres" placeholder="Tot M" readonly>
         <button type="button" class="btn-del-table" onclick="removeColumn(this, '${fleetId}')" title="Remove">X</button>
     `;
@@ -280,17 +276,31 @@ function extractSpread(row) {
     };
 
     row.querySelectorAll('.t-drill-block').forEach(col => {
-        const cat = col.querySelector('.d-cat').value;
-        const dia = col.querySelector('.d-dia').value;
+        const selectedType = col.querySelector('.d-cat').value;
+        const rawCat = selectedType.toLowerCase();
+        const diaDropdown = col.querySelector('.d-dia').value;
         const count = parseFloat(col.querySelector('.d-qty').value) || 0;
         const depth = parseFloat(col.querySelector('.d-depth').value) || 0;
         const metres = count * depth;
 
-        if (!cat || count === 0) return;
+        if (!rawCat || count === 0) return;
+
+        // Auto-detects the base category from your custom string to route it to the correct column
+        let cat = "";
+        if (rawCat.includes("face")) cat = "face";
+        else if (rawCat.includes("rock bolt") || rawCat.includes("rockbolt")) cat = "rockbolt";
+        else if (rawCat.includes("prod")) cat = "prod";
+        else if (rawCat.includes("ream")) cat = "ream";
+        else if (rawCat.includes("splitset") || rawCat.includes("split set")) cat = "splitset";
 
         let target = spread[cat]; 
         if (target) {
-            if (dia && !target.dia.includes(dia)) target.dia.push(dia);
+            // Saves your specific string (e.g., "Face Drilling - 4.3/45mm") into the Dia column so you don't lose it
+            if (selectedType && !target.dia.includes(selectedType)) target.dia.push(selectedType);
+            
+            // Also saves the Dia dropdown if they chose to use it
+            if (diaDropdown && !target.dia.includes(diaDropdown)) target.dia.push(diaDropdown);
+            
             if (depth > 0 && !target.depth.includes(depth)) target.depth.push(depth);
             target.count += count;
             target.metres += metres;
@@ -298,8 +308,8 @@ function extractSpread(row) {
     });
 
     Object.keys(spread).forEach(k => {
-        spread[k].dia = spread[k].dia.join(',');
-        spread[k].depth = spread[k].depth.join(',');
+        spread[k].dia = spread[k].dia.join(' | ');
+        spread[k].depth = spread[k].depth.join(', ');
         spread[k].metres = spread[k].metres > 0 ? spread[k].metres.toFixed(2) : "";
         spread[k].count = spread[k].count > 0 ? spread[k].count : "";
     });
@@ -324,7 +334,6 @@ async function submitData() {
         const totalHoles = parseFloat(row.querySelector('.t-holes').innerText) || 0;
         const totalMetres = parseFloat(row.querySelector('.t-metres').innerText) || 0;
 
-        // Submits if they entered Holes OR if they just selected a Shift and Status (e.g., Non-Operative, 0 drilling)
         if (totalHoles > 0 || status) {
             payload.entries.push({
                 fleetId, shift, loc, status,
