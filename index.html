@@ -39,19 +39,19 @@
     .row-loaded { border-left: 4px solid #00E676; background: #0a1c0a; }
 
     .t-fleet { width: 180px; flex-shrink: 0; display: flex; align-items: center; font-weight: bold; color: var(--epi-yellow); font-size: 0.9rem; border-right: 1px solid #333; padding-right: 10px; }
-    .t-shift { width: 100px; flex-shrink: 0; }
+    .t-shift { width: 80px; flex-shrink: 0; display: flex; align-items: center; font-weight: bold; }
     .t-loc { width: 140px; flex-shrink: 0; }
     .t-status { width: 120px; flex-shrink: 0; border-right: 1px dashed #333; padding-right: 10px; }
 
     .t-row input, .t-row select { background: #000; color: #fff; border: 1px solid #444; padding: 6px; font-size: 0.8rem; border-radius: 3px; width: 100%; outline: none; }
     .t-row input:focus, .t-row select:focus { border-color: var(--epi-yellow); }
-    .t-row input[readonly] { background: #1a1a1a; color: var(--epi-yellow); border-color: #333; font-weight: bold; }
+    .t-row input[readonly] { background: #1a1a1a; color: #888; border-color: #333; cursor: not-allowed; }
 
-    .t-drills { display: flex; gap: 5px; }
-    .t-drill-block { display: flex; gap: 4px; align-items: center; background: #000; padding: 4px; border: 1px solid #333; border-radius: 4px; }
+    .t-drills { display: flex; gap: 5px; flex-wrap: wrap; flex-grow: 1; }
+    .t-drill-block { display: flex; gap: 4px; align-items: center; background: #000; padding: 4px; border: 1px solid #333; border-radius: 4px; margin-bottom: 4px; }
     
-    .t-drill-block select.d-cat { width: 180px; }
-    .t-drill-block select.d-dia { width: 70px; }
+    .t-drill-block select.d-cat { width: 220px; }
+    .t-drill-block input.d-dia { width: 60px; }
     .t-drill-block input.d-depth { width: 60px; }
     .t-drill-block input.d-qty { width: 55px; }
     .t-drill-block input.d-metres { width: 70px; }
@@ -60,6 +60,10 @@
     .btn-del-table:hover { background: #ff4444; }
     .btn-add-table { background: #222; color: var(--epi-yellow); border: 1px dashed var(--epi-yellow); padding: 0 15px; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: bold; display: flex; align-items: center; justify-content: center; margin-left: 5px; }
     .btn-add-table:hover { background: #333; }
+    
+    .t-totals-box { display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 0 10px; background:#222; border-radius:4px; margin-left:5px; min-width: 60px; }
+    .t-totals-lbl { font-size:0.55rem; color:#aaa; font-weight: bold; }
+
     .primary-btn { background: #00E676; color: #000; border: none; padding: 15px; border-radius: 6px; font-weight: 900; font-size: 1rem; cursor: pointer; width: 100%; max-width: 400px; margin: 20px auto; display: block; text-transform: uppercase; }
     
     .table-wrapper::-webkit-scrollbar { height: 10px; }
@@ -89,9 +93,9 @@
 
 <header>
     <div class="header-container">
-        <div class="logo-wrapper"><img src="RDT.png" class="logo" alt="RDT"></div>
+        <div class="logo-wrapper"><img src="RDT.png" class="logo" alt="RDT" onerror="this.style.display='none'"></div>
         <div class="header-title">RDT DPR ENTRY FORM</div>
-        <div class="logo-wrapper"><img src="Boomer1.png" class="logo" alt="Boomer"></div>
+        <div class="logo-wrapper"><img src="Boomer1.png" class="logo" alt="Boomer" onerror="this.style.display='none'"></div>
     </div>
 </header>
 
@@ -138,11 +142,11 @@
 
 <script>
 let dbHierarchy = {};
+let globalHoleTypes = [];
 let activeFleets = []; 
-let savedDPRData = []; // Holds the previously submitted data
-let pendingPayload = null; 
+let savedDPRData = []; 
+let pendingPayload = []; 
 
-// 🚨 PASTE YOUR DEPLOYED GOOGLE APP SCRIPT URL HERE 🚨
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzLPst6bC2JxlF93mI04Lwt8YF18qSw2KRfzNgmT5XsqMEZ9VuC-5FbHJUjouks_HaqaA/exec";
 
 async function callServer(data) {
@@ -158,11 +162,16 @@ async function initApp() {
     document.getElementById('date').valueAsDate = new Date();
     const res = await callServer({ action: "getInitialHierarchy" });
     document.getElementById('loader').style.display = 'none';
+    
     if (res.status === "SUCCESS") {
-        dbHierarchy = res.data;
+        dbHierarchy = res.hierarchy || res.data || {};
+        globalHoleTypes = res.holeTypes || []; 
+        
         const custSelect = document.getElementById('cust');
         custSelect.innerHTML = '<option value="">-- Select Customer --</option>'; 
         Object.keys(dbHierarchy).sort().forEach(c => custSelect.options.add(new Option(c, c)));
+    } else {
+        alert("Failed to load backend hierarchy.");
     }
 }
 
@@ -186,10 +195,10 @@ async function handleSync() {
         document.getElementById('loader').style.display = 'flex';
         document.getElementById('load-text').innerText = "Syncing Database...";
         
-        // 1. Login & Get Fleets
+        // Login & Get Fleets
         const res = await callServer({ action: "login", site: s, user: u, pass: p });
         
-        // 2. Fetch Previous DPR Data for Editing (Upsert capability)
+        // Fetch Previous DPR Data for Editing
         const prevRes = await callServer({ action: "fetchPreviousDPR", site: s, date: d });
         if(prevRes.status === "SUCCESS") savedDPRData = prevRes.data;
 
@@ -224,52 +233,59 @@ function buildFleetDashboard() {
     `;
     container.appendChild(headerRow);
 
-    activeFleets.forEach(fleet => {
-        const shiftOpts = fleet.shifts ? fleet.shifts.split(',').map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('') : '';
-        const locOpts = fleet.locations ? fleet.locations.split(',').map(l => `<option value="${l.trim()}">`).join('') : '';
-        const statusOpts = fleet.statuses ? fleet.statuses.split(',').map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('') : '<option value="Operative">Operative</option><option value="Non-Operative">Non-Operative</option>';
+    const shifts = ['A', 'B', 'C'];
 
-        const row = document.createElement('div');
-        row.className = "t-row";
-        row.id = "fleet-" + fleet.id;
-        
-        // Notice the onchange event added to the Shift dropdown to trigger the Call-back load!
-        row.innerHTML = `
-            <div class="t-fleet">${fleet.id}</div>
-            <div class="t-shift"><select class="f-shift" onchange="loadShiftData('${fleet.id}')"><option value="">Select</option>${shiftOpts}</select></div>
-            <div class="t-loc">
-                <input list="locs-${fleet.id}" class="f-loc" placeholder="Select or Type">
-                <datalist id="locs-${fleet.id}">${locOpts}</datalist>
-            </div>
-            <div class="t-status">
-                <select class="f-status"><option value="">- Status -</option>${statusOpts}</select>
-            </div>
-            <div class="t-drills" id="drills-${fleet.id}"></div>
-            <button type="button" class="btn-add-table" onclick="addDrillColumn('${fleet.id}')" title="Add Drilling Type">+</button>
-            <div class="t-totals" style="display:none;"><span class="t-holes">0</span><span class="t-metres">0</span></div>
-        `;
-        container.appendChild(row);
-        addDrillColumn(fleet.id);
+    activeFleets.forEach(fleet => {
+        const locOpts = fleet.locations ? fleet.locations.split(',').map(l => `<option value="${l.trim()}">`).join('') : '';
+        const statusOpts = fleet.statuses ? fleet.statuses.split(',').map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('') : '<option value="WORKING">WORKING</option><option value="BREAKDOWN">BREAKDOWN</option><option value="IDLE">IDLE</option><option value="SERVICE">SERVICE</option>';
+
+        // Creates exactly 3 rows per machine (A, B, C)
+        shifts.forEach(shift => {
+            const rowId = `fleet-${fleet.id}-shift-${shift}`;
+            const row = document.createElement('div');
+            row.className = "t-row";
+            row.id = rowId;
+            row.dataset.fleet = fleet.id;
+            row.dataset.shift = shift;
+            
+            row.innerHTML = `
+                <div class="t-fleet">${fleet.id}</div>
+                <div class="t-shift">Shift ${shift}</div>
+                <div class="t-loc">
+                    <input list="locs-${rowId}" class="f-loc" placeholder="Select or Type">
+                    <datalist id="locs-${rowId}">${locOpts}</datalist>
+                </div>
+                <div class="t-status">
+                    <select class="f-status"><option value="">- Status -</option>${statusOpts}</select>
+                </div>
+                <div class="t-drills" id="drills-${rowId}"></div>
+                <button type="button" class="btn-add-table" onclick="addDrillColumn('${rowId}')" title="Add Drilling Type">+</button>
+                
+                <div class="t-totals-box">
+                    <span class="t-totals-lbl">HOLES</span>
+                    <span class="t-holes" style="font-weight:bold; color:var(--epi-yellow);">0</span>
+                </div>
+                <div class="t-totals-box">
+                    <span class="t-totals-lbl">METRES</span>
+                    <span class="t-metres" style="font-weight:bold; color:#00E676;">0.00</span>
+                </div>
+            `;
+            container.appendChild(row);
+            
+            // Auto-load data if it exists from fetchPreviousDPR, otherwise spawn a blank block
+            loadShiftData(rowId, fleet.id, shift);
+        });
     });
 
     document.getElementById('main-area').style.display = 'block';
 }
 
-// --- CALL-BACK / EDIT FEATURE ---
-// Triggers instantly when a shift is selected. Populates existing data if found!
-function loadShiftData(fleetId) {
-    const row = document.getElementById(`fleet-${fleetId}`);
-    const shift = row.querySelector('.f-shift').value;
-    const container = document.getElementById(`drills-${fleetId}`);
-    
-    // Reset Row
+function loadShiftData(rowId, fleetId, shift) {
+    const row = document.getElementById(rowId);
+    const container = document.getElementById(`drills-${rowId}`);
     container.innerHTML = "";
     row.classList.remove('row-loaded');
-    row.querySelector('.f-loc').value = "";
-    row.querySelector('.f-status').value = "";
     
-    if (!shift) { addDrillColumn(fleetId); updateFleetTotals(fleetId); return; }
-
     const date = document.getElementById('date').value;
     const recordId = `${fleetId}_${date}_${shift}`;
     
@@ -281,68 +297,99 @@ function loadShiftData(fleetId) {
         row.querySelector('.f-loc').value = savedRow[7] || "";
         row.querySelector('.f-status').value = savedRow[8] || "";
 
-        // Array matching the exact starting column index for each of the 10 buckets in the Sheet
-        const buckets = [11, 15, 19, 23, 27, 31, 35, 39, 43, 47];
+        // Reverse map the 61-column index back into Hole Types
+        const holeMapReverse = {
+            11: "Face Drilling - 4.3/45mm",
+            15: "Face Drilling - 4.9/45mm",
+            19: "Face Drilling - 5.5/48mm",
+            23: "Rock bolt Drilling -2.8/ 33mm",
+            27: "Rock bolt Drilling -2.1/ 33mm",
+            31: "Production Drilling",
+            35: "Reaming - 4.3/102mm",
+            39: "Reaming - 4.9/102mm",
+            43: "Reaming - 5.5/102mm",
+            47: "Split Set Drilling - 2.8/ 33",
+            51: "Split Set Drilling - 2.1/ 33",
+            55: "Scaling - 10 /64"
+        };
+
         let blocksAdded = 0;
 
-        buckets.forEach(idx => {
-            const diaStr = savedRow[idx];
-            const count = savedRow[idx + 1];
-            const depth = savedRow[idx + 2];
+        Object.keys(holeMapReverse).forEach(idx => {
+            let i = parseInt(idx);
+            let dia = savedRow[i];
+            let count = savedRow[i + 1];
+            let depth = savedRow[i + 2];
+            let metres = savedRow[i + 3];
 
-            if (count > 0) {
-                addDrillColumn(fleetId);
+            if (count > 0 || metres > 0) {
+                addDrillColumn(rowId);
                 blocksAdded++;
                 const blocks = container.querySelectorAll('.t-drill-block');
                 const newBlock = blocks[blocks.length - 1];
 
-                // Split "Face Drilling - 4.3/45mm | 45mm" back into two inputs
-                let parts = diaStr ? String(diaStr).split('|') : [];
-                newBlock.querySelector('.d-cat').value = parts[0] ? parts[0].trim() : "";
-                newBlock.querySelector('.d-dia').value = parts[1] ? parts[1].trim() : "";
-                newBlock.querySelector('.d-qty').value = count;
-                newBlock.querySelector('.d-depth').value = depth;
+                newBlock.querySelector('.d-cat').value = holeMapReverse[i];
+                newBlock.querySelector('.d-dia').value = dia || "";
+                newBlock.querySelector('.d-qty').value = count || 0;
+                newBlock.querySelector('.d-depth').value = depth || 0;
+                newBlock.querySelector('.d-metres').value = metres || 0;
             }
         });
 
-        if (blocksAdded === 0) addDrillColumn(fleetId);
+        if (blocksAdded === 0) addDrillColumn(rowId);
     } else {
-        addDrillColumn(fleetId); // Blank slate if no data exists
+        addDrillColumn(rowId); // Blank slate if no data exists
     }
     
-    updateFleetTotals(fleetId);
+    updateFleetTotals(rowId);
 }
 
-function addDrillColumn(fleetId) {
-    const fleet = activeFleets.find(f => f.id === fleetId);
-    if (!fleet) return;
+function addDrillColumn(rowId) {
+    let optionsHTML = '<option value="">-- Select Type --</option>';
+    globalHoleTypes.forEach(h => {
+        optionsHTML += `<option value="${h.type}">${h.type}</option>`;
+    });
 
-    const drillCategories = fleet.types ? fleet.types.split(',').map(t => `<option value="${t.trim()}">${t.trim()}</option>`).join('') : '<option value="">- No Types Found -</option>';
-    const diaOpts = fleet.dias ? fleet.dias.split(',').map(d => `<option value="${d.trim()}">${d.trim()}</option>`).join('') : '';
-
-    const container = document.getElementById(`drills-${fleetId}`);
+    const container = document.getElementById(`drills-${rowId}`);
     const block = document.createElement('div');
     block.className = "t-drill-block";
     
     block.innerHTML = `
-        <select class="d-cat"><option value="">Type</option>${drillCategories}</select>
-        <select class="d-dia"><option value="">Dia</option>${diaOpts}</select>
-        <input type="number" class="d-qty" placeholder="Qty" oninput="updateFleetTotals('${fleetId}')">
-        <input type="number" class="d-depth" placeholder="Dpth" oninput="updateFleetTotals('${fleetId}')">
+        <select class="d-cat" onchange="applyHoleDefaults(this, '${rowId}')">${optionsHTML}</select>
+        <input type="number" class="d-dia" placeholder="Dia" readonly>
+        <input type="number" class="d-depth" placeholder="Dpth" oninput="updateFleetTotals('${rowId}')">
+        <input type="number" class="d-qty" placeholder="Qty" oninput="updateFleetTotals('${rowId}')">
         <input type="number" class="d-metres" placeholder="Tot M" readonly>
-        <button type="button" class="btn-del-table" onclick="removeColumn(this, '${fleetId}')" title="Remove">X</button>
+        <button type="button" class="btn-del-table" onclick="removeColumn(this, '${rowId}')" title="Remove">X</button>
     `;
     container.appendChild(block);
 }
 
-function removeColumn(btnElement, fleetId) {
-    btnElement.parentElement.remove();
-    updateFleetTotals(fleetId);
+// Automatically pulls Dia and Depth based on Hole Type selection
+function applyHoleDefaults(selectElem, rowId) {
+    const block = selectElem.closest('.t-drill-block');
+    const typeVal = selectElem.value;
+    const mapping = globalHoleTypes.find(h => h.type === typeVal);
+    
+    if (mapping) {
+        block.querySelector('.d-dia').value = mapping.dia;
+        block.querySelector('.d-depth').value = mapping.depth;
+    } else {
+        block.querySelector('.d-dia').value = "";
+        block.querySelector('.d-depth').value = "";
+    }
+    updateFleetTotals(rowId);
 }
 
-function updateFleetTotals(fleetId) {
-    const row = document.getElementById(`fleet-${fleetId}`);
-    let totalHoles = 0; let totalMetres = 0;
+function removeColumn(btnElement, rowId) {
+    btnElement.parentElement.remove();
+    updateFleetTotals(rowId);
+}
+
+function updateFleetTotals(rowId) {
+    const row = document.getElementById(rowId);
+    let totalHoles = 0; 
+    let totalMetres = 0;
 
     row.querySelectorAll('.t-drill-block').forEach(col => {
         const depth = parseFloat(col.querySelector('.d-depth').value) || 0;
@@ -352,117 +399,94 @@ function updateFleetTotals(fleetId) {
         if (depth > 0 && qty > 0) {
             const m = depth * qty;
             metresField.value = m.toFixed(2);
-            totalHoles += qty; totalMetres += m;
-        } else { metresField.value = ""; }
+            totalHoles += qty; 
+            totalMetres += m;
+        } else { 
+            metresField.value = ""; 
+        }
     });
 
     row.querySelector('.t-holes').innerText = totalHoles;
     row.querySelector('.t-metres').innerText = totalMetres.toFixed(2);
 }
 
-function extractSpread(row) {
-    let spread = {
-        face43: { dia: [], count: 0, depth: [], metres: 0 },
-        face49: { dia: [], count: 0, depth: [], metres: 0 },
-        face55: { dia: [], count: 0, depth: [], metres: 0 },
-        rb28:   { dia: [], count: 0, depth: [], metres: 0 },
-        rb21:   { dia: [], count: 0, depth: [], metres: 0 },
-        prod:   { dia: [], count: 0, depth: [], metres: 0 },
-        ream43: { dia: [], count: 0, depth: [], metres: 0 },
-        ream49: { dia: [], count: 0, depth: [], metres: 0 },
-        ream55: { dia: [], count: 0, depth: [], metres: 0 },
-        split:  { dia: [], count: 0, depth: [], metres: 0 }
-    };
-
-    row.querySelectorAll('.t-drill-block').forEach(col => {
-        const rawType = col.querySelector('.d-cat').value; 
-        const searchTxt = rawType.toLowerCase();
-        const diaDropdown = col.querySelector('.d-dia').value;
-        const count = parseFloat(col.querySelector('.d-qty').value) || 0;
-        const depth = parseFloat(col.querySelector('.d-depth').value) || 0;
-        const metres = count * depth;
-
-        if (!rawType || count === 0) return;
-
-        let cat = "";
-        if (searchTxt.includes("face") && searchTxt.includes("4.3")) cat = "face43";
-        else if (searchTxt.includes("face") && searchTxt.includes("4.9")) cat = "face49";
-        else if (searchTxt.includes("face") && searchTxt.includes("5.5")) cat = "face55";
-        else if (searchTxt.includes("rock") && searchTxt.includes("2.8")) cat = "rb28";
-        else if (searchTxt.includes("rock") && searchTxt.includes("2.1")) cat = "rb21";
-        else if (searchTxt.includes("prod")) cat = "prod";
-        else if (searchTxt.includes("ream") && searchTxt.includes("4.3")) cat = "ream43";
-        else if (searchTxt.includes("ream") && searchTxt.includes("4.9")) cat = "ream49";
-        else if (searchTxt.includes("ream") && searchTxt.includes("5.5")) cat = "ream55";
-        else if (searchTxt.includes("split")) cat = "split";
-
-        if (cat) {
-            let target = spread[cat];
-            if (rawType && !target.dia.includes(rawType)) target.dia.push(rawType);
-            if (diaDropdown && !target.dia.includes(diaDropdown)) target.dia.push(diaDropdown);
-            if (depth > 0 && !target.depth.includes(depth)) target.depth.push(depth);
-            target.count += count;
-            target.metres += metres;
-        }
-    });
-
-    Object.keys(spread).forEach(k => {
-        spread[k].dia = spread[k].dia.join(' | ');
-        spread[k].depth = spread[k].depth.join(', ');
-        spread[k].metres = spread[k].metres > 0 ? spread[k].metres.toFixed(2) : "";
-        spread[k].count = spread[k].count > 0 ? spread[k].count : "";
-    });
-
-    return spread;
-}
-
-// --- CONFIRMATION POPUP LOGIC ---
 function reviewData() {
-    pendingPayload = {
-        date: document.getElementById('date').value,
-        cust: document.getElementById('cust').value,
-        site: document.getElementById('site').value,
-        user: document.getElementById('user').value,
-        entries: []
-    };
+    pendingPayload = []; // Reset payload
+
+    const dateVal = document.getElementById('date').value;
+    const custVal = document.getElementById('cust').value;
+    const siteVal = document.getElementById('site').value;
+    const userVal = document.getElementById('user').value;
 
     const summaryBody = document.getElementById('summaryBody');
     summaryBody.innerHTML = "";
 
     document.querySelectorAll('.t-row').forEach(row => {
-        const fleetId = row.id.replace("fleet-", "");
-        const shift = row.querySelector('.f-shift').value;
+        const fleetId = row.dataset.fleet;
+        const shift = row.dataset.shift;
         const loc = row.querySelector('.f-loc').value;
         const status = row.querySelector('.f-status').value;
-        const totalHoles = parseFloat(row.querySelector('.t-holes').innerText) || 0;
-        const totalMetres = parseFloat(row.querySelector('.t-metres').innerText) || 0;
 
-        // Extracts partial rows or zero-hole status changes
-        if (totalHoles > 0 || status) {
-            pendingPayload.entries.push({
-                fleetId, shift, loc, status,
-                totalHoles, totalMetres,
-                spread: extractSpread(row)
-            });
-
-            // Populate Modal Table
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="color: var(--epi-yellow); font-weight: bold;">${fleetId}<br><span style="color:#aaa; font-weight:normal; font-size:0.75rem;">${shift || "No Shift"}</span></td>
-                <td>${loc || "N/A"}</td>
-                <td>${status || "N/A"}</td>
-                <td style="font-weight: bold;">${totalHoles}</td>
-                <td style="color: #00E676; font-weight: bold;">${totalMetres.toFixed(2)} M</td>
-            `;
-            summaryBody.appendChild(tr);
+        // Collect all drilling rows for this specific machine/shift
+        const drillRows = row.querySelectorAll('.t-drill-block');
+        
+        // If there is NO drilling data, but a Status is selected, we still want to log it
+        if (drillRows.length === 0 && status) {
+            pushToPayload(fleetId, shift, loc, status, null, 0, 0);
         }
+
+        // Add each drill type as a separate row in the confirmation modal
+        drillRows.forEach(col => {
+            const type = col.querySelector('.d-cat').value;
+            const count = parseFloat(col.querySelector('.d-qty').value) || 0;
+            const metres = parseFloat(col.querySelector('.d-metres').value) || 0;
+
+            if (type && count > 0) {
+                // Populate Modal Table Row-by-Row
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="color: var(--epi-yellow); font-weight: bold;">${fleetId}<br><span style="color:#aaa; font-size:0.7rem;">Shift ${shift}</span></td>
+                    <td style="font-size:0.75rem;">${type}</td>
+                    <td>${status || "N/A"}</td>
+                    <td style="font-weight: bold;">${count}</td>
+                    <td style="color: #00E676; font-weight: bold;">${metres.toFixed(2)} M</td>
+                `;
+                summaryBody.appendChild(tr);
+
+                // Add to payload
+                pendingPayload.push({
+                    date: dateVal, customer: custVal, site: siteVal, fleet: fleetId,
+                    shift: shift, user: userVal, status: status, shiftHours: 8, location: loc,
+                    drilling: [{
+                        type: type,
+                        dia: parseFloat(col.querySelector('.d-dia').value) || 0,
+                        count: count,
+                        depth: parseFloat(col.querySelector('.d-depth').value) || 0,
+                        metres: metres
+                    }],
+                    totalMetres: metres,
+                    totalHoles: count
+                });
+            }
+        });
     });
 
-    if (pendingPayload.entries.length === 0) return alert("No valid data entered. Select a shift and enter data before reviewing.");
-
+    if (pendingPayload.length === 0) return alert("No valid drilling data found to review.");
     document.getElementById('confirmModal').style.display = 'flex';
 }
 
+// Helper to handle status-only entries (no drilling)
+function pushToPayload(fleet, shift, loc, status, drill, holes, m) {
+    pendingPayload.push({
+        date: document.getElementById('date').value,
+        customer: document.getElementById('cust').value,
+        site: document.getElementById('site').value,
+        fleet: fleet, shift: shift, user: document.getElementById('user').value,
+        status: status, shiftHours: 8, location: loc,
+        drilling: drill ? [drill] : [],
+        totalMetres: m, totalHoles: holes
+    });
+}
 async function executeSubmission() {
     document.getElementById('confirmModal').style.display = 'none';
     const btn = document.getElementById('finalSubmitBtn');
@@ -471,6 +495,7 @@ async function executeSubmission() {
     document.getElementById('loader').style.display = 'flex';
     document.getElementById('load-text').innerText = "Uploading to Database...";
 
+    // Send the array to the updated Apps Script backend
     const res = await callServer({ action: "submitPerformance", data: pendingPayload });
     
     document.getElementById('loader').style.display = 'none';
@@ -479,8 +504,10 @@ async function executeSubmission() {
     if (res.status === "SUCCESS") {
         alert("✅ Success! " + res.message);
         document.getElementById('main-area').style.display = 'none'; 
-        pendingPayload = null; // Clear memory
-    } else { alert("❌ Error: " + res.message); }
+        pendingPayload = []; 
+    } else { 
+        alert("❌ Error: " + res.message); 
+    }
 }
 </script>
 </body>
