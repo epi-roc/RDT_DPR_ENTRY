@@ -28,14 +28,22 @@
 
     main { padding: 25px 20px; max-width: 98vw; margin: 0 auto; display: none; }
     
-    .table-wrapper { overflow-x: auto; background: var(--card); border: 1px solid #333; border-radius: 6px; margin-bottom: 20px; }
-    #fleet-container { min-width: max-content; }
+    /* 🚨 NEW: ACCORDION (FOLD/UNFOLD) STYLES 🚨 */
+    .table-wrapper { background: var(--card); border-radius: 6px; margin-bottom: 20px; }
     
-    .t-header-row { display: flex; gap: 8px; padding: 10px; background: #222; font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #aaa; border-bottom: 2px solid var(--epi-yellow); position: sticky; top: 0; z-index: 10; }
-    .t-row { display: flex; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #222; align-items: stretch; background: #111; transition: 0.3s; }
+    .shift-accordion { background: #1a1a1a; border: 1px solid #333; border-left: 5px solid var(--epi-yellow); color: #fff; padding: 12px 20px; font-size: 1.1rem; font-weight: 900; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; margin-bottom: 5px; text-transform: uppercase; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .shift-accordion:hover { background: #222; border-left-color: #fff; }
+    .shift-accordion i.fa-chevron-down { transition: transform 0.3s ease; color: var(--epi-yellow); }
+    .shift-accordion.active i.fa-chevron-down { transform: rotate(180deg); color: #fff; }
+    
+    .shift-group { display: none; border: 1px solid #333; background: #0c0c0c; margin-bottom: 20px; border-radius: 0 0 4px 4px; border-top: none; overflow-x: auto; }
+    .shift-group.active { display: block; animation: slideDown 0.3s ease-in-out; }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .t-header-row { display: flex; gap: 8px; padding: 10px; background: #222; font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #aaa; border-bottom: 2px solid var(--epi-yellow); position: sticky; top: 0; z-index: 10; min-width: max-content; }
+    .t-row { display: flex; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #222; align-items: stretch; background: #111; transition: 0.3s; min-width: max-content; }
     .t-row:hover { background: #1a1a1a; }
     
-    /* Highlight effect when previous data is loaded */
     .row-loaded { border-left: 4px solid #00E676; background: #0a1c0a; }
 
     .t-fleet { width: 180px; flex-shrink: 0; display: flex; align-items: center; font-weight: bold; color: var(--epi-yellow); font-size: 0.9rem; border-right: 1px solid #333; padding-right: 10px; }
@@ -47,7 +55,7 @@
     .t-row input:focus, .t-row select:focus { border-color: var(--epi-yellow); }
     .t-row input[readonly] { background: #1a1a1a; color: #888; border-color: #333; cursor: not-allowed; }
 
-    .t-drills { display: flex; gap: 5px; flex-wrap: wrap; flex-grow: 1; }
+    .t-drills { display: flex; gap: 5px; flex-wrap: wrap; flex-grow: 1; min-width: 450px; }
     .t-drill-block { display: flex; gap: 4px; align-items: center; background: #000; padding: 4px; border: 1px solid #333; border-radius: 4px; margin-bottom: 4px; }
     
     .t-drill-block select.d-cat { width: 220px; }
@@ -73,7 +81,9 @@
     /* Modal Styles */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 9000; padding: 20px; }
     .modal-content { background: #111; border: 1px solid #444; border-top: 4px solid var(--epi-yellow); border-radius: 8px; width: 100%; max-width: 700px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
-    .modal-header { padding: 15px 20px; background: #000; font-weight: bold; font-size: 1.2rem; color: var(--epi-yellow); text-transform: uppercase; border-bottom: 1px solid #333; }
+    .modal-header { padding: 15px 20px; background: #000; font-weight: bold; font-size: 1.2rem; color: var(--epi-yellow); text-transform: uppercase; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    .modal-close-btn { background: transparent; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; transition: 0.2s; }
+    .modal-close-btn:hover { color: #ff4444; transform: scale(1.1); }
     .modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
     .modal-footer { padding: 15px 20px; background: #000; border-top: 1px solid #333; display: flex; justify-content: flex-end; gap: 10px; }
     
@@ -85,9 +95,6 @@
     .btn-confirm { background: var(--epi-yellow); border: none; color: #000; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 900; text-transform: uppercase; }
 
     #loader { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: var(--epi-yellow); font-weight: bold; font-size: 1.2rem; }
-    
-    /* Shift Header separator */
-    .shift-header { background-color: #1a1a1a; color: var(--epi-yellow); padding: 8px 10px; font-weight: 900; font-size: 0.85rem; border-bottom: 1px solid #333; border-top: 1px solid #333; text-transform: uppercase; letter-spacing: 1px; }
 </style>
 </head>
 <body onload="initApp()">
@@ -112,17 +119,19 @@
 </div>
 
 <main id="main-area">
-    <div class="table-wrapper">
-        <div id="fleet-container"></div>
-    </div>
+    <div class="table-wrapper" id="fleet-container">
+        </div>
     <button type="button" class="primary-btn" onclick="reviewData()">REVIEW & SUBMIT DPR</button>
 </main>
 
 <div class="modal-overlay" id="confirmModal">
     <div class="modal-content">
-        <div class="modal-header">Confirm Performance Data</div>
+        <div class="modal-header">
+            <span>Confirm Performance Data</span>
+            <button class="modal-close-btn" onclick="document.getElementById('confirmModal').style.display='none'" title="Close"><i class="fas fa-times"></i></button>
+        </div>
         <div class="modal-body">
-            <p style="margin-bottom: 15px; font-size: 0.9rem; color: #ccc;">Verify the drilling totals. If a record already exists for this shift, it will be updated.</p>
+            <p style="margin-bottom: 15px; font-size: 0.9rem; color: #ccc;">Verify the drilling totals. Data from ALL shifts will be saved.</p>
             <table class="summary-table">
                 <thead>
                     <tr>
@@ -173,28 +182,14 @@ async function initApp() {
         const custSelect = document.getElementById('cust');
         custSelect.innerHTML = '<option value="">-- Select Customer --</option>'; 
         
-        // 🚨 ADVANCED GARBAGE FILTER: Seals the dropdown against messy Excel data 🚨
         Object.keys(dbHierarchy).sort().forEach(c => {
             let cleanC = c.trim();
             let lowerC = cleanC.toLowerCase();
             
-            // 1. Skip empty strings
-            if (!cleanC) return;
-            
-            // 2. Skip single or double letters (like Shift "A", "B", "C" or "NA")
-            if (cleanC.length <= 2) return;
-            
-            // 3. Skip pure numbers (e.g., "156202")
-            if (/^\d+$/.test(cleanC)) return;
-            
-            // 4. Skip dates and fractions containing numbers and slashes (e.g., "18/06/2026", "11/2008")
-            if (/[\/\-]/.test(cleanC) && /\d/.test(cleanC)) return;
-            
-            // 5. Skip Excel Column Headers
+            if (!cleanC || cleanC.length <= 2 || /^\d+$/.test(cleanC) || ( /[\/\-]/.test(cleanC) && /\d/.test(cleanC) )) return;
             const invalidWords = ["machine", "fleet", "date", "month", "daily", "report", "location", "status", "shift", "total"];
             if (invalidWords.some(word => lowerC.includes(word))) return;
             
-            // If it passes all the checks, it's a real Customer name
             custSelect.options.add(new Option(cleanC, cleanC));
         });
     } else {
@@ -222,10 +217,7 @@ async function handleSync() {
         document.getElementById('loader').style.display = 'flex';
         document.getElementById('load-text').innerText = "Syncing Database...";
         
-        // Login & Get Fleets
         const res = await callServer({ action: "login", site: s, user: u, pass: p });
-        
-        // Fetch Previous DPR Data for Editing
         const prevRes = await callServer({ action: "fetchPreviousDPR", site: s, date: d });
         if(prevRes.status === "SUCCESS") savedDPRData = prevRes.data;
 
@@ -243,32 +235,53 @@ async function handleSync() {
     }
 }
 
+// 🚨 NEW: ACCORDION FOLD/UNFOLD LOGIC 🚨
+window.toggleShift = function(shift) {
+    const grp = document.getElementById(`group-shift-${shift}`);
+    const btn = document.getElementById(`acc-btn-${shift}`);
+    
+    if (grp.classList.contains('active')) {
+        grp.classList.remove('active');
+        btn.classList.remove('active');
+    } else {
+        grp.classList.add('active');
+        btn.classList.add('active');
+    }
+}
+
 function buildFleetDashboard() {
     const container = document.getElementById('fleet-container');
     container.innerHTML = ""; 
 
     if (activeFleets.length === 0) return container.innerHTML = "<h3 style='color:#ff4444; padding:20px;'>No machines assigned to this site.</h3>";
 
-    const headerRow = document.createElement('div');
-    headerRow.className = "t-header-row";
-    headerRow.innerHTML = `
-        <div class="t-fleet">Fleet Asset</div>
-        <div class="t-shift">Shift</div>
-        <div class="t-loc">Location</div>
-        <div class="t-status">Status</div>
-        <div style="padding-left:5px;">Drilling Data <span style="color:#666; text-transform:none;">(Type, Dia, Qty, Depth, Total)</span></div>
-    `;
-    container.appendChild(headerRow);
-
     const shifts = ['A', 'B', 'C'];
 
-    // Grouping by Shift First
     shifts.forEach(shift => {
-        // Visual Header for the Shift Group
-        const shiftDiv = document.createElement('div');
-        shiftDiv.className = 'shift-header';
-        shiftDiv.innerText = `▼ ALL FLEETS - SHIFT ${shift}`;
-        container.appendChild(shiftDiv);
+        // Build the Fold/Unfold Header
+        const accBtn = document.createElement('div');
+        // By default, only Shift A is unfolded
+        accBtn.className = `shift-accordion ${shift === 'A' ? 'active' : ''}`;
+        accBtn.id = `acc-btn-${shift}`;
+        accBtn.onclick = () => toggleShift(shift);
+        accBtn.innerHTML = `<span><i class="fas fa-layer-group"></i> ALL FLEETS - SHIFT ${shift}</span> <i class="fas fa-chevron-down"></i>`;
+        container.appendChild(accBtn);
+
+        // Build the Expandable Content Group
+        const groupDiv = document.createElement('div');
+        groupDiv.className = `shift-group ${shift === 'A' ? 'active' : ''}`;
+        groupDiv.id = `group-shift-${shift}`;
+
+        const headerRow = document.createElement('div');
+        headerRow.className = "t-header-row";
+        headerRow.innerHTML = `
+            <div class="t-fleet">Fleet Asset</div>
+            <div class="t-shift">Shift</div>
+            <div class="t-loc">Location</div>
+            <div class="t-status">Status</div>
+            <div style="padding-left:5px;">Drilling Data <span style="color:#666; text-transform:none;">(Type, Dia, Qty, Depth, Total)</span></div>
+        `;
+        groupDiv.appendChild(headerRow);
 
         activeFleets.forEach(fleet => {
             const locOpts = fleet.locations ? fleet.locations.split(',').map(l => `<option value="${l.trim()}">`).join('') : '';
@@ -303,11 +316,12 @@ function buildFleetDashboard() {
                     <span class="t-metres" style="font-weight:bold; color:#00E676;">0.00</span>
                 </div>
             `;
-            container.appendChild(row);
+            groupDiv.appendChild(row);
             
-            // Auto-load data if it exists from fetchPreviousDPR, otherwise spawn a blank block
             loadShiftData(rowId, fleet.id, shift);
         });
+
+        container.appendChild(groupDiv);
     });
 
     document.getElementById('main-area').style.display = 'block';
@@ -322,15 +336,13 @@ function loadShiftData(rowId, fleetId, shift) {
     const date = document.getElementById('date').value;
     const recordId = `${fleetId}_${date}_${shift}`;
     
-    // Search previously downloaded data
     const savedRow = savedDPRData.find(r => r[0] === recordId);
 
     if (savedRow) {
-        row.classList.add('row-loaded'); // Visual feedback that data was retrieved
+        row.classList.add('row-loaded');
         row.querySelector('.f-loc').value = savedRow[7] || "";
         row.querySelector('.f-status').value = savedRow[8] || "";
 
-        // Reverse map the 61-column index back into Hole Types
         const holeMapReverse = {
             11: "Face Drilling - 4.3/45mm",
             15: "Face Drilling - 4.9/45mm",
@@ -371,7 +383,7 @@ function loadShiftData(rowId, fleetId, shift) {
 
         if (blocksAdded === 0) addDrillColumn(rowId);
     } else {
-        addDrillColumn(rowId); // Blank slate if no data exists
+        addDrillColumn(rowId); 
     }
     
     updateFleetTotals(rowId);
@@ -398,7 +410,6 @@ function addDrillColumn(rowId) {
     container.appendChild(block);
 }
 
-// Automatically pulls Dia and Depth based on Hole Type selection
 function applyHoleDefaults(selectElem, rowId) {
     const block = selectElem.closest('.t-drill-block');
     const typeVal = selectElem.value;
@@ -444,7 +455,7 @@ function updateFleetTotals(rowId) {
 }
 
 function reviewData() {
-    pendingPayload = []; // Reset payload
+    pendingPayload = []; 
 
     const dateVal = document.getElementById('date').value;
     const custVal = document.getElementById('cust').value;
@@ -454,28 +465,25 @@ function reviewData() {
     const summaryBody = document.getElementById('summaryBody');
     summaryBody.innerHTML = "";
 
+    // Gathers data from ALL shifts, whether they are folded or unfolded!
     document.querySelectorAll('.t-row').forEach(row => {
         const fleetId = row.dataset.fleet;
         const shift = row.dataset.shift;
         const loc = row.querySelector('.f-loc').value;
         const status = row.querySelector('.f-status').value;
 
-        // Collect all drilling rows for this specific machine/shift
         const drillRows = row.querySelectorAll('.t-drill-block');
         
-        // If there is NO drilling data, but a Status is selected, we still want to log it
         if (drillRows.length === 0 && status) {
             pushToPayload(fleetId, shift, loc, status, null, 0, 0);
         }
 
-        // Add each drill type as a separate row in the confirmation modal
         drillRows.forEach(col => {
             const type = col.querySelector('.d-cat').value;
             const count = parseFloat(col.querySelector('.d-qty').value) || 0;
             const metres = parseFloat(col.querySelector('.d-metres').value) || 0;
 
             if (type && count > 0) {
-                // Populate Modal Table Row-by-Row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td style="color: var(--epi-yellow); font-weight: bold;">${fleetId}<br><span style="color:#aaa; font-size:0.7rem;">Shift ${shift}</span></td>
@@ -486,7 +494,6 @@ function reviewData() {
                 `;
                 summaryBody.appendChild(tr);
 
-                // Add to payload
                 pendingPayload.push({
                     date: dateVal, customer: custVal, site: siteVal, fleet: fleetId,
                     shift: shift, user: userVal, status: status, shiftHours: 8, location: loc,
@@ -508,7 +515,6 @@ function reviewData() {
     document.getElementById('confirmModal').style.display = 'flex';
 }
 
-// Helper to handle status-only entries (no drilling)
 function pushToPayload(fleet, shift, loc, status, drill, holes, m) {
     pendingPayload.push({
         date: document.getElementById('date').value,
@@ -529,7 +535,6 @@ async function executeSubmission() {
     document.getElementById('loader').style.display = 'flex';
     document.getElementById('load-text').innerText = "Uploading to Database...";
 
-    // Send the array to the updated Apps Script backend
     const res = await callServer({ action: "submitPerformance", data: pendingPayload });
     
     document.getElementById('loader').style.display = 'none';
