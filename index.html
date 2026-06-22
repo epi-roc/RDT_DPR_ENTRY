@@ -251,23 +251,27 @@ window.toggleShift = function(shift) {
 
 function buildFleetDashboard() {
     const container = document.getElementById('fleet-container');
+    if (!container) {
+        console.error("Critical Error: 'fleet-container' not found!");
+        return;
+    }
     container.innerHTML = ""; 
 
-    if (activeFleets.length === 0) return container.innerHTML = "<h3 style='color:#ff4444; padding:20px;'>No machines assigned to this site.</h3>";
+    if (activeFleets.length === 0) {
+        container.innerHTML = "<h3 style='color:#ff4444; padding:20px;'>No machines assigned to this site.</h3>";
+        return;
+    }
 
     const shifts = ['A', 'B', 'C'];
 
     shifts.forEach(shift => {
-        // Build the Fold/Unfold Header
         const accBtn = document.createElement('div');
-        // By default, only Shift A is unfolded
         accBtn.className = `shift-accordion ${shift === 'A' ? 'active' : ''}`;
         accBtn.id = `acc-btn-${shift}`;
         accBtn.onclick = () => toggleShift(shift);
         accBtn.innerHTML = `<span><i class="fas fa-layer-group"></i> ALL FLEETS - SHIFT ${shift}</span> <i class="fas fa-chevron-down"></i>`;
         container.appendChild(accBtn);
 
-        // Build the Expandable Content Group
         const groupDiv = document.createElement('div');
         groupDiv.className = `shift-group ${shift === 'A' ? 'active' : ''}`;
         groupDiv.id = `group-shift-${shift}`;
@@ -284,111 +288,91 @@ function buildFleetDashboard() {
         groupDiv.appendChild(headerRow);
 
         activeFleets.forEach(fleet => {
-            const locOpts = fleet.locations ? fleet.locations.split(',').map(l => `<option value="${l.trim()}">`).join('') : '';
-            const statusOpts = fleet.statuses ? fleet.statuses.split(',').map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('') : '<option value="WORKING">WORKING</option><option value="BREAKDOWN">BREAKDOWN</option><option value="IDLE">IDLE</option><option value="SERVICE">SERVICE</option>';
+            const shiftArray = fleet.shifts ? fleet.shifts.split(',').map(s => s.trim()) : [];
+            if (shiftArray.includes(shift)) {
+                const rowId = `fleet-${fleet.id}-shift-${shift}`;
+                const locOpts = fleet.locations ? fleet.locations.split(',').map(l => `<option value="${l.trim()}">`).join('') : '';
+                const statusOpts = fleet.statuses ? fleet.statuses.split(',').map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('') : '<option value="WORKING">WORKING</option><option value="BREAKDOWN">BREAKDOWN</option><option value="IDLE">IDLE</option><option value="SERVICE">SERVICE</option>';
 
-            const rowId = `fleet-${fleet.id}-shift-${shift}`;
-            const row = document.createElement('div');
-            row.className = "t-row";
-            row.id = rowId;
-            row.dataset.fleet = fleet.id;
-            row.dataset.shift = shift;
-            
-            row.innerHTML = `
-                <div class="t-fleet">${fleet.id}</div>
-                <div class="t-shift">Shift ${shift}</div>
-                <div class="t-loc">
-                    <input list="locs-${rowId}" class="f-loc" placeholder="Select or Type">
-                    <datalist id="locs-${rowId}">${locOpts}</datalist>
-                </div>
-                <div class="t-status">
-                    <select class="f-status"><option value="">- Status -</option>${statusOpts}</select>
-                </div>
-                <div class="t-drills" id="drills-${rowId}"></div>
-                <button type="button" class="btn-add-table" onclick="addDrillColumn('${rowId}')" title="Add Drilling Type">+</button>
+                const row = document.createElement('div');
+                row.className = "t-row";
+                row.id = rowId;
+                row.dataset.fleet = fleet.id;
+                row.dataset.shift = shift;
                 
-                <div class="t-totals-box">
-                    <span class="t-totals-lbl">HOLES</span>
-                    <span class="t-holes" style="font-weight:bold; color:var(--epi-yellow);">0</span>
-                </div>
-                <div class="t-totals-box">
-                    <span class="t-totals-lbl">METRES</span>
-                    <span class="t-metres" style="font-weight:bold; color:#00E676;">0.00</span>
-                </div>
-            `;
-            groupDiv.appendChild(row);
-            
-            loadShiftData(rowId, fleet.id, shift);
+                row.innerHTML = `
+                    <div class="t-fleet">${fleet.id}</div>
+                    <div class="t-shift">Shift ${shift}</div>
+                    <div class="t-loc"><input list="locs-${rowId}" class="f-loc" placeholder="Select or Type"><datalist id="locs-${rowId}">${locOpts}</datalist></div>
+                    <div class="t-status"><select class="f-status"><option value="">- Status -</option>${statusOpts}</select></div>
+                    <div class="t-drills" id="drills-${rowId}"></div>
+                    <button type="button" class="btn-add-table" onclick="addDrillColumn('${rowId}')">+</button>
+                    <div class="t-totals-box"><span class="t-totals-lbl">HOLES</span><span class="t-holes" style="font-weight:bold; color:var(--epi-yellow);">0</span></div>
+                    <div class="t-totals-box"><span class="t-totals-lbl">METRES</span><span class="t-metres" style="font-weight:bold; color:#00E676;">0.00</span></div>
+                `;
+                groupDiv.appendChild(row);
+                loadShiftData(rowId, fleet.id, shift);
+            }
         });
-
         container.appendChild(groupDiv);
     });
-
     document.getElementById('main-area').style.display = 'block';
 }
-
 function loadShiftData(rowId, fleetId, shift) {
     const row = document.getElementById(rowId);
     const container = document.getElementById(`drills-${rowId}`);
+
+    if (!row || !container) {
+        setTimeout(() => loadShiftData(rowId, fleetId, shift), 50);
+        return;
+    }
+
     container.innerHTML = "";
     row.classList.remove('row-loaded');
     
     const date = document.getElementById('date').value;
     const recordId = `${fleetId}_${date}_${shift}`;
-    
-    const savedRow = savedDPRData.find(r => r[0] === recordId);
+    const savedRow = savedDPRData ? savedDPRData.find(r => r[0] === recordId) : null;
 
     if (savedRow) {
         row.classList.add('row-loaded');
-        row.querySelector('.f-loc').value = savedRow[7] || "";
-        row.querySelector('.f-status').value = savedRow[8] || "";
+        const locInput = row.querySelector('.f-loc');
+        const statusSelect = row.querySelector('.f-status');
+        if (locInput) locInput.value = savedRow[7] || "";
+        if (statusSelect) statusSelect.value = savedRow[8] || "";
 
         const holeMapReverse = {
-            11: "Face Drilling - 4.3/45mm",
-            15: "Face Drilling - 4.9/45mm",
-            19: "Face Drilling - 5.5/48mm",
-            23: "Rock bolt Drilling -2.8/ 33mm",
-            27: "Rock bolt Drilling -2.1/ 33mm",
-            31: "Production Drilling",
-            35: "Reaming - 4.3/102mm",
-            39: "Reaming - 4.9/102mm",
-            43: "Reaming - 5.5/102mm",
-            47: "Split Set Drilling - 2.8/ 33",
-            51: "Split Set Drilling - 2.1/ 33",
-            55: "Scaling - 10 /64"
+            11: "Face Drilling - 4.3/45mm", 15: "Face Drilling - 4.9/45mm", 19: "Face Drilling - 5.5/48mm",
+            23: "Rock bolt Drilling -2.8/ 33mm", 27: "Rock bolt Drilling -2.1/ 33mm", 31: "Production Drilling",
+            35: "Reaming - 4.3/102mm", 39: "Reaming - 4.9/102mm", 43: "Reaming - 5.5/102mm",
+            47: "Split Set Drilling - 2.8/ 33", 51: "Split Set Drilling - 2.1/ 33", 55: "Scaling - 10 /64"
         };
 
         let blocksAdded = 0;
-
         Object.keys(holeMapReverse).forEach(idx => {
             let i = parseInt(idx);
-            let dia = savedRow[i];
-            let count = savedRow[i + 1];
-            let depth = savedRow[i + 2];
-            let metres = savedRow[i + 3];
+            let dia = savedRow[i], count = savedRow[i + 1], depth = savedRow[i + 2], metres = savedRow[i + 3];
 
             if (count > 0 || metres > 0) {
                 addDrillColumn(rowId);
                 blocksAdded++;
                 const blocks = container.querySelectorAll('.t-drill-block');
                 const newBlock = blocks[blocks.length - 1];
-
-                newBlock.querySelector('.d-cat').value = holeMapReverse[i];
-                newBlock.querySelector('.d-dia').value = dia || "";
-                newBlock.querySelector('.d-qty').value = count || 0;
-                newBlock.querySelector('.d-depth').value = depth || 0;
-                newBlock.querySelector('.d-metres').value = metres || 0;
+                if (newBlock) {
+                    newBlock.querySelector('.d-cat').value = holeMapReverse[i];
+                    newBlock.querySelector('.d-dia').value = dia || "";
+                    newBlock.querySelector('.d-qty').value = count || 0;
+                    newBlock.querySelector('.d-depth').value = depth || 0;
+                    newBlock.querySelector('.d-metres').value = metres || 0;
+                }
             }
         });
-
         if (blocksAdded === 0) addDrillColumn(rowId);
     } else {
         addDrillColumn(rowId); 
     }
-    
     updateFleetTotals(rowId);
 }
-
 function addDrillColumn(rowId) {
     let optionsHTML = '<option value="">-- Select Type --</option>';
     globalHoleTypes.forEach(h => {
