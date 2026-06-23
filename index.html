@@ -449,7 +449,7 @@ function reviewData() {
     const summaryBody = document.getElementById('summaryBody');
     summaryBody.innerHTML = "";
 
-    // Gathers data from ALL shifts, whether they are folded or unfolded!
+    // Iterate through each machine row
     document.querySelectorAll('.t-row').forEach(row => {
         const fleetId = row.dataset.fleet;
         const shift = row.dataset.shift;
@@ -458,16 +458,30 @@ function reviewData() {
 
         const drillRows = row.querySelectorAll('.t-drill-block');
         
-        if (drillRows.length === 0 && status) {
-            pushToPayload(fleetId, shift, loc, status, null, 0, 0);
-        }
+        // 1. Create a container for ALL drill types for this specific machine
+        let machineDrillingData = [];
+        let machineTotalHoles = 0;
+        let machineTotalMetres = 0;
 
+        // 2. Loop through the drill inputs and gather them
         drillRows.forEach(col => {
             const type = col.querySelector('.d-cat').value;
             const count = parseFloat(col.querySelector('.d-qty').value) || 0;
             const metres = parseFloat(col.querySelector('.d-metres').value) || 0;
 
             if (type && count > 0) {
+                machineDrillingData.push({
+                    type: type,
+                    dia: parseFloat(col.querySelector('.d-dia').value) || 0,
+                    count: count,
+                    depth: parseFloat(col.querySelector('.d-depth').value) || 0,
+                    metres: metres
+                });
+                
+                machineTotalHoles += count;
+                machineTotalMetres += metres;
+
+                // Add to modal summary
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td style="color: var(--epi-yellow); font-weight: bold;">${fleetId}<br><span style="color:#aaa; font-size:0.7rem;">Shift ${shift}</span></td>
@@ -477,28 +491,31 @@ function reviewData() {
                     <td style="color: #00E676; font-weight: bold;">${metres.toFixed(2)} M</td>
                 `;
                 summaryBody.appendChild(tr);
-
-                pendingPayload.push({
-                    date: dateVal, customer: custVal, site: siteVal, fleet: fleetId,
-                    shift: shift, user: userVal, status: status, shiftHours: 8, location: loc,
-                    drilling: [{
-                        type: type,
-                        dia: parseFloat(col.querySelector('.d-dia').value) || 0,
-                        count: count,
-                        depth: parseFloat(col.querySelector('.d-depth').value) || 0,
-                        metres: metres
-                    }],
-                    totalMetres: metres,
-                    totalHoles: count
-                });
             }
         });
+
+        // 3. Push ONE consolidated record per machine to the payload
+        if (machineDrillingData.length > 0 || status) {
+            pendingPayload.push({
+                date: dateVal, 
+                customer: custVal, 
+                site: siteVal, 
+                fleet: fleetId,
+                shift: shift, 
+                user: userVal, 
+                status: status, 
+                shiftHours: 8, 
+                location: loc,
+                drilling: machineDrillingData, // Contains ALL hole types
+                totalMetres: machineTotalMetres,
+                totalHoles: machineTotalHoles
+            });
+        }
     });
 
     if (pendingPayload.length === 0) return alert("No valid drilling data found to review.");
     document.getElementById('confirmModal').style.display = 'flex';
 }
-
 function pushToPayload(fleet, shift, loc, status, drill, holes, m) {
     pendingPayload.push({
         date: document.getElementById('date').value,
