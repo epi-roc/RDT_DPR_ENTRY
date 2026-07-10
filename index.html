@@ -262,18 +262,18 @@ function buildFleetDashboard() {
         return;
     }
 
-    const shifts = ['A', 'B', 'C'];
+    const shifts = ['C', 'A', 'B'];
 
     shifts.forEach(shift => {
         const accBtn = document.createElement('div');
-        accBtn.className = `shift-accordion ${shift === 'A' ? 'active' : ''}`;
+        accBtn.className = `shift-accordion ${shift === 'C' ? 'active' : ''}`;
         accBtn.id = `acc-btn-${shift}`;
         accBtn.onclick = () => toggleShift(shift);
         accBtn.innerHTML = `<span><i class="fas fa-layer-group"></i> ALL FLEETS - SHIFT ${shift}</span> <i class="fas fa-chevron-down"></i>`;
         container.appendChild(accBtn);
 
         const groupDiv = document.createElement('div');
-        groupDiv.className = `shift-group ${shift === 'A' ? 'active' : ''}`;
+        groupDiv.className = `shift-group ${shift === 'C' ? 'active' : ''}`;
         groupDiv.id = `group-shift-${shift}`;
 
         const headerRow = document.createElement('div');
