@@ -159,7 +159,7 @@ let activeFleets = [];
 let savedDPRData = []; 
 let pendingPayload = []; 
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyS-rIbr8f4FlWasHenfUg6FBVgdJ6-6sFfBB1XIha73zUWkPFr1P6OFUVMA4CKttMIRw/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwVbmm2h9Hk5Ok5K4CjHR7kq2WnDGQIpcYupvvxK4e9PI0YZWh2tvYHwLBek9I2ET_dWg/exec";
 
 async function callServer(data) {
     try {
@@ -219,22 +219,29 @@ async function handleSync() {
         
         const res = await callServer({ action: "login", site: s, user: u, pass: p });
         const prevRes = await callServer({ action: "fetchPreviousDPR", site: s, date: d });
-        if(prevRes.status === "SUCCESS") savedDPRData = prevRes.data;
+        
+        // 🚨 FIX 1: The backend getLastClosingMeters sends 'payload', not 'data'
+        if(prevRes.status === "SUCCESS") savedDPRData = prevRes.payload; 
 
         icon.classList.remove('fa-spin');
         document.getElementById('loader').style.display = 'none';
 
         if(res.status === "SUCCESS") {
             activeFleets = res.fleets || [];
+            
+            // 🚨 FIX 2: Capture the site-specific hole types from the backend
+            window.activeHoleTypes = res.holeTypes || []; 
+            
             buildFleetDashboard();
-        } else { alert("Sync Error: " + res.message); }
+        } else { 
+            alert("Sync Error: " + res.message); 
+        }
     } catch (err) {
         document.getElementById('loader').style.display = 'none';
         if(icon) icon.classList.remove('fa-spin');
         alert("UI Error: " + err.message);
     }
 }
-
 // 🚨 NEW: ACCORDION FOLD/UNFOLD LOGIC 🚨
 window.toggleShift = function(shift) {
     const grp = document.getElementById(`group-shift-${shift}`);
@@ -331,67 +338,82 @@ function loadShiftData(rowId, fleetId, shift) {
     row.classList.remove('row-loaded');
     
     const date = document.getElementById('date').value;
-    const recordId = `${fleetId}_${date}_${shift}`;
-    const savedRow = savedDPRData ? savedDPRData.find(r => r[0] === recordId) : null;
+    // Prefix the ID search - remember, our new ID is Fleet_Date_Shift_HoleType
+    const shiftPrefix = `${fleetId}_${date}_${shift}`;
+    
+    // Find ALL rows for this specific shift
+    const savedRows = savedDPRData ? savedDPRData.filter(r => r[0].startsWith(shiftPrefix)) : [];
 
-    if (savedRow) {
+    if (savedRows.length > 0) {
         row.classList.add('row-loaded');
+        
+        // Load Location and Status (We assume these are stored in the first row of the shift)
         const locInput = row.querySelector('.f-loc');
         const statusSelect = row.querySelector('.f-status');
-        if (locInput) locInput.value = savedRow[7] || "";
-        if (statusSelect) statusSelect.value = savedRow[8] || "";
+        if (locInput) locInput.value = savedRows[0][7] || ""; // Adjust index if needed
+        if (statusSelect) statusSelect.value = savedRows[0][8] || "";
 
-        const holeMapReverse = {
-            11: "Face Drilling - 4.3/45mm", 15: "Face Drilling - 4.9/45mm", 19: "Face Drilling - 5.5/48mm",
-            23: "Rock bolt Drilling -2.8/ 33mm", 27: "Rock bolt Drilling -2.1/ 33mm", 31: "Production Drilling",
-            35: "Reaming - 4.3/102mm", 39: "Reaming - 4.9/102mm", 43: "Reaming - 5.5/102mm",
-            47: "Split Set Drilling - 2.8/ 33", 51: "Split Set Drilling - 2.1/ 33", 55: "Scaling - 10 /64"
-        };
-
-        let blocksAdded = 0;
-        Object.keys(holeMapReverse).forEach(idx => {
-            let i = parseInt(idx);
-            let dia = savedRow[i], count = savedRow[i + 1], depth = savedRow[i + 2], metres = savedRow[i + 3];
-
-            if (count > 0 || metres > 0) {
-                addDrillColumn(rowId);
-                blocksAdded++;
-                const blocks = container.querySelectorAll('.t-drill-block');
-                const newBlock = blocks[blocks.length - 1];
-                if (newBlock) {
-                    newBlock.querySelector('.d-cat').value = holeMapReverse[i];
-                    newBlock.querySelector('.d-dia').value = dia || "";
-                    newBlock.querySelector('.d-qty').value = count || 0;
-                    newBlock.querySelector('.d-depth').value = depth || 0;
-                    newBlock.querySelector('.d-metres').value = metres || 0;
-                }
+        // Loop through every found row and add a block
+        savedRows.forEach(savedRow => {
+            addDrillColumn(rowId);
+            const blocks = container.querySelectorAll('.t-drill-block');
+            const newBlock = blocks[blocks.length - 1];
+            
+            if (newBlock) {
+                newBlock.querySelector('.d-cat').value = savedRow[8];  // Index 8 is Hole_Type
+                newBlock.querySelector('.d-qty').value = savedRow[9];  // Index 9 is Count
+                newBlock.querySelector('.d-depth').value = savedRow[10]; // Index 10 is Depth
+                newBlock.querySelector('.d-metres').value = savedRow[11]; // Index 11 is Total
             }
         });
-        if (blocksAdded === 0) addDrillColumn(rowId);
     } else {
         addDrillColumn(rowId); 
     }
     updateFleetTotals(rowId);
 }
-function addDrillColumn(rowId) {
-    let optionsHTML = '<option value="">-- Select Type --</option>';
-    globalHoleTypes.forEach(h => {
-        optionsHTML += `<option value="${h.type}">${h.type}</option>`;
-    });
 
-    const container = document.getElementById(`drills-${rowId}`);
+function addDrillColumn(rowId) {
+    const container = document.getElementById('drills-' + rowId);
+    if (!container) return;
+
+    // 1. BUILD DYNAMIC OPTIONS
+    let optionsHTML = '<option value="">- Select Hole Type -</option>';
+
+    if (window.activeHoleTypes && window.activeHoleTypes.length > 0) {
+        window.activeHoleTypes.forEach(hole => {
+            optionsHTML += `<option value="${hole.type}" data-dia="${hole.dia}" data-depth="${hole.depth}">${hole.type}</option>`;
+        });
+    } else {
+        optionsHTML += '<option value="">No hole types available</option>';
+    }
+
+    // 2. CREATE THE BLOCK
     const block = document.createElement('div');
     block.className = "t-drill-block";
-    
+
+    // 3. INJECT HTML (Notice the backticks ` around this block!)
     block.innerHTML = `
         <select class="d-cat" onchange="applyHoleDefaults(this, '${rowId}')">${optionsHTML}</select>
         <input type="number" class="d-dia" placeholder="Dia" readonly>
-        <input type="number" class="d-depth" placeholder="Dpth" oninput="updateFleetTotals('${rowId}')">
-        <input type="number" class="d-qty" placeholder="Qty" oninput="updateFleetTotals('${rowId}')">
+        <input type="number" class="d-depth" placeholder="Dpth" oninput="calculateAndTotal('${rowId}', this)">
+        <input type="number" class="d-qty" placeholder="Qty" oninput="calculateAndTotal('${rowId}', this)">
         <input type="number" class="d-metres" placeholder="Tot M" readonly>
-        <button type="button" class="btn-del-table" onclick="removeColumn(this, '${rowId}')" title="Remove">X</button>
+        <button type="button" class="btn-del-table" onclick="removeColumn(this, '${rowId}')">X</button>
     `;
+
     container.appendChild(block);
+}
+// New helper to handle the math
+function calculateAndTotal(rowId, inputElement) {
+    const block = inputElement.closest('.t-drill-block');
+    const qty = parseFloat(block.querySelector('.d-qty').value) || 0;
+    const depth = parseFloat(block.querySelector('.d-depth').value) || 0;
+    
+    // Update the total for this row
+    block.querySelector('.d-metres').value = (qty * depth).toFixed(2);
+    
+    // Update the fleet grand total
+    updateFleetTotals(rowId);
 }
 
 function applyHoleDefaults(selectElem, rowId) {
