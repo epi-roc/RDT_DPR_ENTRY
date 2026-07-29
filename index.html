@@ -337,9 +337,19 @@ function loadShiftData(rowId, fleetId, shift) {
     container.innerHTML = "";
     row.classList.remove('row-loaded');
     
-    const date = document.getElementById('date').value;
-    // Prefix the ID search - remember, our new ID is Fleet_Date_Shift_HoleType
-    const shiftPrefix = `${fleetId}_${date}_${shift}`;
+    // 1. Get raw date and format it to YYYY-MM-DD to match the Sheet's Record_ID
+    const rawDate = document.getElementById('date').value; 
+    let formattedDate = rawDate;
+    
+    if (rawDate && rawDate.includes("-")) {
+        const parts = rawDate.split("-");
+        if (parts[0].length === 2) { // If it starts with DD, swap to YYYY-MM-DD
+            formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+    }
+    
+    // Prefix the ID search correctly
+    const shiftPrefix = `${fleetId}_${formattedDate}_${shift}`;
     
     // Find ALL rows for this specific shift
     const savedRows = savedDPRData ? savedDPRData.filter(r => r[0].startsWith(shiftPrefix)) : [];
@@ -347,11 +357,11 @@ function loadShiftData(rowId, fleetId, shift) {
     if (savedRows.length > 0) {
         row.classList.add('row-loaded');
         
-        // Load Location and Status (We assume these are stored in the first row of the shift)
+        // 2. 🚨 FIXED INDICES: Location is 6, Status is 7
         const locInput = row.querySelector('.f-loc');
         const statusSelect = row.querySelector('.f-status');
-        if (locInput) locInput.value = savedRows[0][7] || ""; // Adjust index if needed
-        if (statusSelect) statusSelect.value = savedRows[0][8] || "";
+        if (locInput) locInput.value = savedRows[0][6] || ""; 
+        if (statusSelect) statusSelect.value = savedRows[0][7] || "";
 
         // Loop through every found row and add a block
         savedRows.forEach(savedRow => {
@@ -371,7 +381,6 @@ function loadShiftData(rowId, fleetId, shift) {
     }
     updateFleetTotals(rowId);
 }
-
 function addDrillColumn(rowId) {
     const container = document.getElementById('drills-' + rowId);
     if (!container) return;
