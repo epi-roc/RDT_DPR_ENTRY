@@ -217,7 +217,7 @@ async function handleSync() {
         document.getElementById('loader').style.display = 'flex';
         document.getElementById('load-text').innerText = "Syncing Database...";
         
-        const res = await callServer({ action: "login", site: s, user: u, pass: p });
+        const res = await callServer({ action: "syncSite", site: s, user: u, pass: p });
         const prevRes = await callServer({ action: "fetchPreviousDPR", site: s, date: d });
         
         // 🚨 FIX 1: The backend getLastClosingMeters sends 'payload', not 'data'
